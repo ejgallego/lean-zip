@@ -145,6 +145,14 @@ require zipCommon from git "https://github.com/kim-em/lean-zip-common" @ "4425ba
 
 lean_lib Zip
 
+/-- Binary-safe native reference driver for Vir/FIR WASM conformance. -/
+lean_exe «zip-wasm-oracle» where
+  root := `ZipWasmOracle
+
+/-- Focused native conformance checks for the backend-neutral WASM roots. -/
+lean_exe «zip-wasm-test» where
+  root := `ZipWasmTest
+
 -- zlib FFI
 input_file zlib_ffi.c where
   path := "c" / "zlib_ffi.c"

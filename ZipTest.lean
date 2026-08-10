@@ -29,6 +29,7 @@ import ZipTest.PackedTokens
 import ZipTest.PackedHeads
 import ZipTest.SizeHelpers
 import ZipTest.L7Adaptive
+import ZipTest.WasmEntry
 
 def main : IO Unit := do
   unless ← System.FilePath.pathExists "testdata" do
@@ -62,6 +63,7 @@ def main : IO Unit := do
   ZipTest.PackedHeads.tests
   ZipTest.SizeHelpers.tests
   ZipTest.L7Adaptive.tests
+  ZipTest.WasmEntry.tests
   ZipTest.NativeCompressBench.tests
   ZipTest.Benchmark.tests
   ZipTest.BoundedRead.tests
