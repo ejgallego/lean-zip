@@ -17,10 +17,16 @@ Local branch: `feat/vir-fir-wasm-port`
 - `zip-wasm-test` checks exact delegation, native inflate round-trips, levels
   0/1/6/10/11, the 32 KiB window boundary, and the deterministic 1 MiB
   incompressibility-prescan path.
-- The rc1 focused executables and tests pass. A cold `DeflateDynamic` olean
-  build took 728 seconds; the wrapper module itself took 351 milliseconds.
-- Vir rc2 and FIR 4.32 compatibility probes remain to be run in isolated local
-  worktrees.
+- The focused executables and tests pass under rc1, Vir's rc2, and FIR's 4.32
+  toolchains without source changes. Cold `DeflateDynamic` olean builds took
+  728 seconds on rc1, 601 seconds on rc2, and 700 seconds on 4.32; wrapper
+  modules stayed below 400 milliseconds.
+- Each toolchain's native oracle compressed `README.md` at level 6 to the same
+  5,888 bytes, SHA-256
+  `7d3d2614084b718182c87f02cc4d1ea2b98056189fbb960500c3b746efc039bf`,
+  and the stream independently inflated to the 13,013-byte source.
+- The compatibility probes used detached local worktrees and independent local
+  `zipCommon` worktrees at the pinned commit; no dependency was fetched.
 
 This plan assumes that "the main routine" means the pure compressor entry point
 `Zip.Native.Deflate.deflateRaw`, rather than the `ZipTest.main` test runner or the
@@ -67,15 +73,15 @@ The local repositories currently disagree on their Lean compiler revision:
 | Vir | `607ef30` | `v4.33.0-rc2` | IR package generator and shared WASM interpreter |
 | FIR | `31b9290c` | `v4.32.0` | final-LCNF-to-WASM pipeline |
 
-Generated Lean IR/LCNF is compiler-version-sensitive. No backend work should be
-judged until the producer and consumer use one exact compiler revision. Start
-with local source-compatibility probes, then record one of these outcomes:
+Generated Lean IR/LCNF is compiler-version-sensitive, so each backend must
+compile lean-zip with its own exact compiler revision. The local probes establish
+that the source itself needs no compatibility patch:
 
-- Vir: move the lean-zip integration worktree to Vir's exact rc2 toolchain, or
-  check out a locally available Vir revision matching rc1.
-- FIR: either compile a compatible lean-zip source slice with FIR's 4.32
-  toolchain, or make the compiler-version port an explicit FIR work item. Do
-  not silently consume 4.33 LCNF with a 4.32 backend.
+- Vir can compile the integration source directly with its rc2 toolchain.
+- FIR can compile the same integration source directly with its 4.32 toolchain.
+
+Do not reuse generated rc1 IR/LCNF in either backend; rebuild the source roots
+under the backend's pinned toolchain as the compatibility probes did.
 
 FIR's repository instructions also constrain ownership. Native WASM generation
 work belongs in its `wasm/generation` worktree/lane; concrete runtime changes
