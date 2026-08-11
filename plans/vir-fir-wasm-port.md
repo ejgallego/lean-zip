@@ -1,6 +1,7 @@
 # Vir/FIR WASM port plan
 
-Status: Phase A and Vir Phase C implementation complete; FIR and shared hardening pending
+Status: Phase A and Vir Phase C complete; shared benchmark contract landed;
+FIR and broader hardening pending
 
 Local worktree: `.worktrees/vir-fir-wasm-port`
 
@@ -73,6 +74,25 @@ Vir implementation support is therefore complete. Broader acceptance remains
 in Phase F: exercise levels 0 through 10, high-entropy inputs around the
 `Float.log2` prescan threshold, repeated calls with Wasm memory tracking, and
 performance/hot-declaration instrumentation.
+
+### Shared benchmark checkpoint (2026-08-11)
+
+`bench/wasm` now owns the application-level demo and performance contract. Its
+tracked plan separates micro smoke, focused levels 0 through 10, representative
+Canterbury cells, and optional real Silesia prescan cells. Every timed case is
+gated by byte equality with the native oracle and independent raw-DEFLATE
+inflation. The report keeps artifact/compile/instantiate/package/first-call
+costs separate from diagnostics-off steady calls, alternates native/Vir block
+order AB/BA, retains raw samples and checksums, tracks Wasm memory growth, and
+hashes the executables, sources, runtime, shared Wasm, package descriptor, and
+every package member. Reports must be written outside the repository and are
+never overwritten.
+
+The retained Vir full-compressor artifact passes the repository-owned smoke
+demo at levels 1 and 6. A two-pass, five-sample smoke report also completed;
+its tiny input and interpreter timings are plumbing evidence, not an
+optimization claim. Track D remains authoritative for native compressor
+throughput and compression-ratio claims.
 
 This plan assumes that "the main routine" means the pure compressor entry point
 `Zip.Native.Deflate.deflateRaw`, rather than the `ZipTest.main` test runner or the

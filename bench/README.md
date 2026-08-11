@@ -4,6 +4,12 @@ Native lean-zip vs. reference implementations, on **compression ratio** and
 **throughput**, over the **real compression corpora** across every DEFLATE
 level. The graphs are regenerated from committed data by the workflow below.
 
+Backend execution has a separate correctness/demo/benchmark contract under
+[`wasm/`](wasm/README.md). It currently drives the production raw-DEFLATE root
+through Vir and is structured to accept FIR once FIR has a concrete ByteArray
+runtime. Its timings do not replace the native dashboard numbers documented
+here.
+
 > **Real corpora only.** Synthetic patterns were removed (see
 > [`../plans/track-d-state.md`](../plans/track-d-state.md), D-18): the pseudo-prose
 > pattern was pathologically compressible (200:1) and its decode read ~3800 MB/s

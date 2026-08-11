@@ -149,6 +149,10 @@ lean_lib Zip
 lean_exe «zip-wasm-oracle» where
   root := `ZipWasmOracle
 
+/-- In-process native timing peer for the Vir/FIR WASM benchmark harness. -/
+lean_exe «zip-wasm-bench-native» where
+  root := `ZipWasmBenchNative
+
 /-- Focused native conformance checks for the backend-neutral WASM roots. -/
 lean_exe «zip-wasm-test» where
   root := `ZipWasmTest

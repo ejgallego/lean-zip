@@ -1,0 +1,135 @@
+{
+  "format": "lean-zip-wasm-benchmark-plan",
+  "version": 1,
+  "timing": {
+    "passes": 2,
+    "samples": 5,
+    "warmups": 1,
+    "iterations": 1
+  },
+  "suites": [
+    {
+      "id": "smoke",
+      "description": "Fast micro gate for artifact loading, correctness, and timing plumbing.",
+      "timing": {
+        "passes": 2,
+        "samples": 5,
+        "warmups": 1,
+        "iterations": 1
+      },
+      "workloads": [
+        {
+          "id": "vir-smoke-text",
+          "class": "micro",
+          "source": {
+            "kind": "utf8",
+            "value": "abracadabra abracadabra abracadabra -- lean zip VIR fallback smoke -- abracadabra"
+          },
+          "levels": [1, 6]
+        }
+      ]
+    },
+    {
+      "id": "level-matrix",
+      "description": "Focused dispatch coverage over every production compression level.",
+      "timing": {
+        "passes": 2,
+        "samples": 5,
+        "warmups": 1,
+        "iterations": 1
+      },
+      "workloads": [
+        {
+          "id": "canterbury-cp-html",
+          "class": "focused",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/canterbury/cp.html"
+          },
+          "levels": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        }
+      ]
+    },
+    {
+      "id": "canterbury",
+      "description": "Representative committed text, source, and binary corpus cells.",
+      "timing": {
+        "passes": 2,
+        "samples": 5,
+        "warmups": 1,
+        "iterations": 1
+      },
+      "workloads": [
+        {
+          "id": "canterbury-fields-c",
+          "class": "representative",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/canterbury/fields.c"
+          },
+          "levels": [1, 6, 10]
+        },
+        {
+          "id": "canterbury-alice29",
+          "class": "representative",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/canterbury/alice29.txt"
+          },
+          "levels": [1, 6, 10]
+        },
+        {
+          "id": "canterbury-kennedy",
+          "class": "representative",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/canterbury/kennedy.xls"
+          },
+          "levels": [1, 6, 10]
+        }
+      ]
+    },
+    {
+      "id": "prescan-threshold",
+      "description": "Optional real poorly-compressible Silesia cells for Float.log2 route fidelity.",
+      "timing": {
+        "passes": 2,
+        "samples": 5,
+        "warmups": 1,
+        "iterations": 1
+      },
+      "workloads": [
+        {
+          "id": "silesia-sao",
+          "class": "representative",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/silesia/sao",
+            "optional": true
+          },
+          "levels": [1, 6, 10]
+        },
+        {
+          "id": "silesia-x-ray",
+          "class": "representative",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/silesia/x-ray",
+            "optional": true
+          },
+          "levels": [1, 6, 10]
+        },
+        {
+          "id": "silesia-ooffice",
+          "class": "representative",
+          "source": {
+            "kind": "file",
+            "path": "bench/corpora/silesia/ooffice",
+            "optional": true
+          },
+          "levels": [1, 6, 10]
+        }
+      ]
+    }
+  ]
+}
