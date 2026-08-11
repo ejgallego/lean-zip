@@ -1,6 +1,6 @@
 # Vir/FIR WASM port plan
 
-Status: Phase A complete; Vir Phase C integration in progress
+Status: Phase A and Vir Phase C implementation complete; FIR and shared hardening pending
 
 Local worktree: `.worktrees/vir-fir-wasm-port`
 
@@ -28,47 +28,51 @@ Local branch: `feat/vir-fir-wasm-port`
 - The compatibility probes used detached local worktrees and independent local
   `zipCommon` worktrees at the pinned commit; no dependency was fetched.
 
-### Vir progress sync (2026-08-10)
+### Vir completion sync (2026-08-11)
 
-Vir's local `feat/lean-zip-deflate-probe` worktree now contains an uncommitted
-implementation of the general reference-body mechanism requested by this plan:
+Vir completed and committed the general backend support on its local
+`feat/lean-zip-deflate-probe` branch at `9fc13ce` (`feat: support explicit
+extern reference bodies`). The worktree is clean.
 
-- `vir_extern_fallback Foo.bar, ...` accepts explicitly named `@[extern] def`s,
-  rejects declarations without transparent bodies and recursive reference
-  bodies, and compiles private clones of the selected Lean bodies;
-- package indexing hides the private clones, installs their function bodies
-  under the original extern names, and follows the clones during export
-  validation; and
-- the command is exposed by the top-level `Vir` import, so a backend-owned
-  adapter can opt in without adding Vir attributes or imports to lean-zip's
-  production modules;
-- full-dispatch preparation also registers `UInt8.ofNatLT` and proposes a
-  WASI-libm `Float.log2` provider, measured at 3,019 raw bytes (2,512 bytes
-  under deterministic gzip) with a strict WASI SDK 33 link.
+- `vir_extern_fallback Foo.bar, ...` accepts explicitly named transparent
+  `@[extern] def`s and rejects opaque, bodyless, duplicate, and directly
+  recursive requests. Native compilation remains unchanged.
+- Package generation emits an ownership-preserving adapter at the original
+  extern name and calls a private compiled clone of its Lean reference body.
+  Newly exposed dependencies still pass ordinary closure validation.
+- The six fixed-level-1 accelerators and `UInt32.log2Clz` use this fallback.
+  The generic runtime additionally registers `ByteArray.set`, `UInt8.ofNatLT`,
+  and the canonical WASI-libm `Float.log2` provider. Its strict WASI SDK 33 link
+  has zero unresolved symbols; isolated `Float.log2` cost is 3,019 raw bytes
+  and 2,512 bytes under deterministic gzip.
+- The fixed Level-1 package set contains 306 Lean IR declarations and 105
+  registered natives across 24 members (294,047 member bytes). The full package
+  set contains 665 Lean IR declarations and 136 registered natives across 36
+  members (1,175,981 member bytes). Both report zero missing IR declarations,
+  native registrations, initializer gaps, and JavaScript host imports.
 
-This is the correct integration boundary for the six fixed-level-1 externs and
-later `UInt32.log2Clz`. The lean-zip adapter should consume it only after Vir's
-interface and tests settle; the stable modules in `Zip.Wasm` remain
-backend-neutral.
+Local completion checks were independently replayed while synchronizing:
 
-Current validation is not green yet. `lake build Vir` passes, but the focused
-`package-generator-smoke.mjs` run reaches a Lean IR-interpreter assertion in
-the pre-existing marked-package case, before exercising the new fallback case.
-An intermediate import-layout revision also made the generated-library build
-lose `Vir/GeneratePackage/Basic.olean`; that layout has since been removed. No
-lean-zip level-1 package or runtime parity result has therefore been
-established from these changes yet.
+```text
+lake build Vir                                      PASS (50 jobs)
+node scripts/runtime-tests/package-generator-smoke.mjs  PASS
+npm run check:native-externs                        PASS
+  477 unique entries; 467 Lean-derived; 10 VIR overrides
+retained package reports                            PASS (zero missing)
+shared-runtime parity: level1, full level 1/6       PASS
+independent raw inflate for all three outputs       PASS
+```
 
-Next Vir acceptance sequence:
+The runtime parity replay used Vir's retained 81-byte repeated-text corpus and
+the linked native lean-zip executable. The generated Level-1 and full package
+sets remain under `/tmp/vir-lean-zip-rc2.DC1lfY/.lake/build/vir/module-sets/`.
+The stable `Zip.Wasm` roots remain backend-neutral; the explicit Vir adapter is
+backend-owned.
 
-1. restore the package-generator smoke to green;
-2. generate `Zip.Wasm.compressLevel1` with fallbacks for the six known externs
-   and require zero unresolved declarations or native registrations;
-3. compare its output byte-for-byte with `zip-wasm-oracle level1`, including
-   repeated calls in one interpreter instance; and
-4. only then exercise the seventh fallback and validate the currently proposed
-   `Float.log2` and `UInt8.ofNatLT` providers for `Zip.Wasm.compressRaw`, with
-   special attention to prescan route and byte parity.
+Vir implementation support is therefore complete. Broader acceptance remains
+in Phase F: exercise levels 0 through 10, high-entropy inputs around the
+`Float.log2` prescan threshold, repeated calls with Wasm memory tracking, and
+performance/hot-declaration instrumentation.
 
 This plan assumes that "the main routine" means the pure compressor entry point
 `Zip.Native.Deflate.deflateRaw`, rather than the `ZipTest.main` test runner or the
