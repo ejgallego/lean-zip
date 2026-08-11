@@ -15,7 +15,7 @@ after that correctness gate.
 The report separates:
 
 - artifact reading and WebAssembly compilation;
-- runtime instantiation and IR package-set loading;
+- runtime instantiation and IR package/package-set loading;
 - the first application call;
 - diagnostics-off steady calls from native Lean and Vir;
 - Wasm memory before/after every Vir timing block; and
@@ -60,41 +60,46 @@ reported samples contain only repeated `Zip.Wasm.compressRaw` calls.
 
 ## Vir artifact
 
-The backend adapter is [`vir/ZipVirBench.lean`](vir/ZipVirBench.lean). Build it
-in a Lean 4.33.0-rc2 client package with the local Vir commit that provides
-`vir_extern_fallback`:
+Vir owns the authoritative executable adapter at
+`fixtures/lean-zip/VirLeanZipAcceptance/Exports.lean`. Keeping the adapter in
+the backend repository prevents its explicit fallback list from drifting away
+from Vir's package-generator and runtime acceptance.
+
+Generate and retain the direct package from the Vir worktree, using a separate
+lean-zip compatibility checkout built with Vir's exact Lean 4.33.0-rc2
+toolchain:
 
 ```text
-Vir commit: 9fc13ce22a01b6713f3868938697129bb687fc76
-lake build +Zip.VirBench:vir
+cd /path/to/vir
+npm run accept:lean-zip -- /path/to/lean-zip-rc2 --passes 3 --keep
 ```
 
-Keep that Vir dependency in the integration package; do not add it to
-lean-zip's production import graph. Pass the resulting full-compressor
-`.irpkg-set.json` explicitly to the harness. Generated rc1 IR must not be mixed
-with Vir's rc2 runtime.
+The primary lean-zip checkout remains on rc1; source compatibility does not
+make rc1-generated IR compatible with Vir's rc2 runtime. The acceptance
+command rejects mismatched toolchains. It prints the retained temporary
+directory containing `lean-zip-acceptance.irpkg` and its package report.
 
-The retained feasibility artifact can currently be used directly:
+Consume that artifact directly:
 
 ```text
 VIR=/home/egallego/lean/vir/.worktrees/lean-zip-deflate-probe
-SET=/tmp/vir-lean-zip-rc2.DC1lfY/.lake/build/vir/module-sets/Zip/VirProbeFull.irpkg-set.json
+PKG=/tmp/vir-lean-zip-acceptance-.../lean-zip-acceptance.irpkg
+ENTRY=VirLeanZipAcceptance.compressRaw
 
 node bench/wasm/lean-zip.mjs demo \
-  --vir-root "$VIR" --package-set "$SET"
+  --vir-root "$VIR" --package "$PKG" --entry "$ENTRY"
 ```
 
-The export name is inferred when the package contains one export, so the same
-command works with `Zip.VirProbeFull.compressRaw` and the permanent
-`Zip.VirBench.compressRaw` adapter.
+The harness also accepts `--package-set PATH` for modular feasibility artifacts.
+An entry is inferred only when the package input exposes exactly one export.
 
 ## Browser demo
 
-Serve a loopback-only interactive page using the same package set:
+Serve a loopback-only interactive page using the same package input:
 
 ```text
 node bench/wasm/serve.mjs \
-  --vir-root "$VIR" --package-set "$SET"
+  --vir-root "$VIR" --package "$PKG" --entry "$ENTRY"
 ```
 
 Open `http://127.0.0.1:4173/`. Each request invokes the real Vir/Wasm entry,
@@ -111,15 +116,15 @@ change the recorded Git identity:
 
 ```text
 node bench/wasm/lean-zip.mjs bench \
-  --vir-root "$VIR" --package-set "$SET" \
+  --vir-root "$VIR" --package "$PKG" --entry "$ENTRY" \
   --suite smoke --json /tmp/lean-zip-vir-smoke.json
 ```
 
 Useful controls include `--suite`, repeatable `--filter`, and explicit
 `--passes`, `--samples`, `--warmups`, and `--iterations` overrides. The report
 hashes the plan, harness, native executables, Vir runtime, shared Wasm,
-descriptor, every package member, and every input. It also records repository
-heads, dirty state, raw run order, and all samples.
+the direct package or package-set descriptor and members, and every input. It
+also records repository heads, dirty state, raw run order, and all samples.
 
 Do not compare the first-call or package-load rows with native steady-state
 throughput. Do not use a one-pass smoke run as an optimization claim. For a

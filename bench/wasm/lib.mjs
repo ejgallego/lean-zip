@@ -181,6 +181,9 @@ export async function readPackageSet(descriptorPath) {
     members.push({ module: entry.module, role: entry.role, path, bytes, sha256: sha256(bytes) });
   }
   return {
+    kind: "package-set",
+    inputPath: descriptorPath,
+    inputSha256: sha256(descriptorBytes),
     descriptorPath,
     descriptorBytes,
     descriptorSha256: sha256(descriptorBytes),
@@ -188,6 +191,37 @@ export async function readPackageSet(descriptorPath) {
     members,
     packageBytes: members.map((member) => member.bytes),
   };
+}
+
+export async function readSinglePackage(packagePath) {
+  const bytes = await readFile(packagePath);
+  const digest = sha256(bytes);
+  return {
+    kind: "package",
+    inputPath: packagePath,
+    inputSha256: digest,
+    descriptorPath: null,
+    descriptorBytes: null,
+    descriptorSha256: null,
+    descriptor: null,
+    members: [{
+      module: null,
+      role: "root",
+      path: packagePath,
+      bytes,
+      sha256: digest,
+    }],
+    packageBytes: [bytes],
+  };
+}
+
+export async function readPackageInput({ packagePath = null, packageSetPath = null }) {
+  if ((packagePath === null) === (packageSetPath === null)) {
+    throw new TypeError("exactly one package or package-set path is required");
+  }
+  return packagePath === null
+    ? readPackageSet(packageSetPath)
+    : readSinglePackage(packagePath);
 }
 
 export function aggregateRuns(runs, inputBytes) {

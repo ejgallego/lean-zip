@@ -67,8 +67,8 @@ independent raw inflate for all three outputs       PASS
 The runtime parity replay used Vir's retained 81-byte repeated-text corpus and
 the linked native lean-zip executable. The generated Level-1 and full package
 sets remain under `/tmp/vir-lean-zip-rc2.DC1lfY/.lake/build/vir/module-sets/`.
-The stable `Zip.Wasm` roots remain backend-neutral; the explicit Vir adapter is
-backend-owned.
+The stable `Zip.Wasm` roots remain backend-neutral; the authoritative explicit
+Vir adapter is backend-owned in Vir's checked-in lean-zip acceptance fixture.
 
 Vir implementation support is therefore complete. Broader acceptance remains
 in Phase F: exercise levels 0 through 10, high-entropy inputs around the

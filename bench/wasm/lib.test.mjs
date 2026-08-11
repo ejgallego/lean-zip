@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
   aggregateRuns,
   backendOrder,
   median,
+  readPackageInput,
   validateNativeSampleReport,
   validatePlan,
 } from "./lib.mjs";
@@ -109,4 +112,29 @@ test("plan rejects duplicate suite ids", () => {
       { id: "same", timing, workloads: [workload] },
     ],
   }), /duplicate id/);
+});
+
+test("single package input preserves bytes and identity", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "lean-zip-package-input-test-"));
+  try {
+    const path = join(directory, "application.irpkg");
+    const bytes = Buffer.from([1, 2, 3, 4]);
+    await writeFile(path, bytes);
+    const input = await readPackageInput({ packagePath: path });
+    assert.equal(input.kind, "package");
+    assert.equal(input.inputPath, path);
+    assert.equal(input.members.length, 1);
+    assert.deepEqual(input.packageBytes[0], bytes);
+    assert.equal(input.inputSha256, input.members[0].sha256);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("package input requires exactly one source", async () => {
+  await assert.rejects(() => readPackageInput({}), /exactly one/);
+  await assert.rejects(
+    () => readPackageInput({ packagePath: "a", packageSetPath: "b" }),
+    /exactly one/,
+  );
 });

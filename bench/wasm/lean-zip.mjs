@@ -15,7 +15,7 @@ import {
   aggregateRuns,
   backendOrder,
   byteChecksum,
-  readPackageSet,
+  readPackageInput,
   requirePositiveInteger,
   selectSuite,
   sha256,
@@ -33,7 +33,9 @@ const usage = `usage:
   node bench/wasm/lean-zip.mjs bench --json <outside-repo.json> [options]
 
 required backend options:
-  --package-set PATH       Vir .irpkg-set.json for the full compressor
+  --package PATH           one Vir .irpkg artifact
+  --package-set PATH       Vir .irpkg-set.json descriptor
+                           exactly one package input is required
   --vir-root PATH          Vir checkout/worktree (derives runtime module and Wasm)
   --vir-runtime PATH       override web/src/vir-runtime-node.js
   --wasm PATH              override web/public/vir-upstream.wasm
@@ -68,6 +70,7 @@ function parseArgs(argv) {
     virRoot: environmentPath("LEAN_ZIP_VIR_ROOT"),
     virRuntime: environmentPath("LEAN_ZIP_VIR_RUNTIME"),
     wasm: environmentPath("LEAN_ZIP_VIR_WASM"),
+    package: environmentPath("LEAN_ZIP_VIR_PACKAGE"),
     packageSet: environmentPath("LEAN_ZIP_VIR_PACKAGE_SET"),
     nativeOracle: join(repoRoot, ".lake/build/bin/zip-wasm-oracle"),
     nativeBench: join(repoRoot, ".lake/build/bin/zip-wasm-bench-native"),
@@ -89,6 +92,7 @@ function parseArgs(argv) {
     else if (option === "--vir-root") parsed.virRoot = resolve(requireValue(index++, option));
     else if (option === "--vir-runtime") parsed.virRuntime = resolve(requireValue(index++, option));
     else if (option === "--wasm") parsed.wasm = resolve(requireValue(index++, option));
+    else if (option === "--package") parsed.package = resolve(requireValue(index++, option));
     else if (option === "--package-set") parsed.packageSet = resolve(requireValue(index++, option));
     else if (option === "--native-oracle") parsed.nativeOracle = resolve(requireValue(index++, option));
     else if (option === "--native-bench") parsed.nativeBench = resolve(requireValue(index++, option));
@@ -110,9 +114,11 @@ function parseArgs(argv) {
   for (const [label, value] of [
     ["--vir-runtime or --vir-root", parsed.virRuntime],
     ["--wasm or --vir-root", parsed.wasm],
-    ["--package-set", parsed.packageSet],
   ]) {
     if (value === null) throw new Error(`${label} is required`);
+  }
+  if ((parsed.package === null) === (parsed.packageSet === null)) {
+    throw new Error("exactly one of --package or --package-set is required");
   }
   if (command === "bench" && parsed.json === null) throw new Error("bench requires --json");
   return parsed;
@@ -240,10 +246,10 @@ function selectedWorkloads(suite, filters) {
 
 async function prepare(options) {
   const artifactReadStarted = performance.now();
-  const [planBytes, wasmBytes, packageSet] = await Promise.all([
+  const [planBytes, wasmBytes, packageInput] = await Promise.all([
     readFile(options.plan),
     readFile(options.wasm),
-    readPackageSet(options.packageSet),
+    readPackageInput({ packagePath: options.package, packageSetPath: options.packageSet }),
   ]);
   const artifactReadMs = performance.now() - artifactReadStarted;
   const plan = validatePlan(JSON.parse(planBytes.toString("utf8")));
@@ -256,7 +262,7 @@ async function prepare(options) {
   const compileStarted = performance.now();
   await factory.module();
   const wasmCompileMs = performance.now() - compileStarted;
-  return { planBytes, plan, suite, wasmBytes, packageSet, factory, artifactReadMs, wasmCompileMs };
+  return { planBytes, plan, suite, wasmBytes, packageInput, factory, artifactReadMs, wasmCompileMs };
 }
 
 async function runDemo(options, prepared) {
@@ -276,7 +282,7 @@ async function runDemo(options, prepared) {
         assert.deepEqual(new Uint8Array(inflateRawSync(expected.bytes)), loaded.bytes);
         const runtime = await prepared.factory.instantiate();
         try {
-          runtime.loadIrPackageSetBytes(prepared.packageSet.packageBytes);
+          runtime.loadIrPackageSetBytes(prepared.packageInput.packageBytes);
           const entry = inferEntry(runtime, options.entry);
           const actual = runtime.call(entry, loaded.bytes, level);
           assert.deepEqual(actual, expected.bytes);
@@ -309,7 +315,7 @@ async function benchmarkCase(options, prepared, tempDir, workload, loaded, level
   try {
     const memoryAfterInstantiate = memorySnapshot(runtime);
     const packageLoadStarted = performance.now();
-    runtime.loadIrPackageSetBytes(prepared.packageSet.packageBytes);
+    runtime.loadIrPackageSetBytes(prepared.packageInput.packageBytes);
     const packageLoadMs = performance.now() - packageLoadStarted;
     const memoryAfterPackageLoad = memorySnapshot(runtime);
     const entry = inferEntry(runtime, options.entry);
@@ -404,16 +410,15 @@ async function benchmarkCase(options, prepared, tempDir, workload, loaded, level
 
 async function buildIdentity(options, prepared) {
   const nativeSource = join(repoRoot, "ZipWasmBenchNative.lean");
-  const virAdapter = join(scriptDir, "vir/ZipVirBench.lean");
   const [
     runtimeHash, wasmHash, nativeOracleHash, nativeBenchHash, harnessHash, libHash,
-    nativeSourceHash, virAdapterHash,
+    nativeSourceHash,
   ] =
     await Promise.all([
       sha256File(options.virRuntime), sha256File(options.wasm),
       sha256File(options.nativeOracle), sha256File(options.nativeBench),
       sha256File(fileURLToPath(import.meta.url)), sha256File(join(scriptDir, "lib.mjs")),
-      sha256File(nativeSource), sha256File(virAdapter),
+      sha256File(nativeSource),
     ]);
   const cpuInfo = cpus();
   return {
@@ -438,15 +443,15 @@ async function buildIdentity(options, prepared) {
       harness: { path: fileURLToPath(import.meta.url), sha256: harnessHash },
       library: { path: join(scriptDir, "lib.mjs"), sha256: libHash },
       nativeSource: { path: nativeSource, sha256: nativeSourceHash },
-      virAdapter: { path: virAdapter, sha256: virAdapterHash },
       virRuntime: { path: options.virRuntime, sha256: runtimeHash },
       wasm: { path: options.wasm, sha256: wasmHash },
       nativeOracle: { path: options.nativeOracle, sha256: nativeOracleHash },
       nativeBench: { path: options.nativeBench, sha256: nativeBenchHash },
-      packageSet: {
-        path: options.packageSet,
-        sha256: prepared.packageSet.descriptorSha256,
-        members: prepared.packageSet.members.map((member) => ({
+      packageInput: {
+        kind: prepared.packageInput.kind,
+        path: prepared.packageInput.inputPath,
+        sha256: prepared.packageInput.inputSha256,
+        members: prepared.packageInput.members.map((member) => ({
           module: member.module,
           role: member.role,
           path: member.path,

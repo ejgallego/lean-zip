@@ -10,17 +10,18 @@ import { performance } from "node:perf_hooks";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { inflateRawSync } from "node:zlib";
 
-import { readPackageSet, sha256 } from "./lib.mjs";
+import { readPackageInput, sha256 } from "./lib.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "../..");
 const maxInputBytes = 4096;
 
 const usage = `usage:
-  node bench/wasm/serve.mjs --package-set PATH --vir-root PATH [--port 4173]
+  node bench/wasm/serve.mjs (--package PATH | --package-set PATH) --vir-root PATH [--port 4173]
 
 options:
-  --package-set PATH       Vir .irpkg-set.json for the full compressor
+  --package PATH           one Vir .irpkg artifact
+  --package-set PATH       Vir .irpkg-set.json descriptor
   --vir-root PATH          Vir checkout/worktree
   --vir-runtime PATH       override web/src/vir-runtime-node.js
   --wasm PATH              override web/public/vir-upstream.wasm
@@ -37,6 +38,7 @@ function parseArgs(argv) {
   };
   const options = {
     help: false,
+    package: environmentPath("LEAN_ZIP_VIR_PACKAGE"),
     packageSet: environmentPath("LEAN_ZIP_VIR_PACKAGE_SET"),
     virRoot: environmentPath("LEAN_ZIP_VIR_ROOT"),
     virRuntime: environmentPath("LEAN_ZIP_VIR_RUNTIME"),
@@ -52,7 +54,8 @@ function parseArgs(argv) {
   };
   for (let index = 0; index < argv.length; index += 1) {
     const option = argv[index];
-    if (option === "--package-set") options.packageSet = resolve(take(index++, option));
+    if (option === "--package") options.package = resolve(take(index++, option));
+    else if (option === "--package-set") options.packageSet = resolve(take(index++, option));
     else if (option === "--vir-root") options.virRoot = resolve(take(index++, option));
     else if (option === "--vir-runtime") options.virRuntime = resolve(take(index++, option));
     else if (option === "--wasm") options.wasm = resolve(take(index++, option));
@@ -71,8 +74,10 @@ function parseArgs(argv) {
     options.virRuntime ??= join(options.virRoot, "web/src/vir-runtime-node.js");
     options.wasm ??= join(options.virRoot, "web/public/vir-upstream.wasm");
   }
+  if ((options.package === null) === (options.packageSet === null)) {
+    throw new Error("exactly one of --package or --package-set is required");
+  }
   for (const [label, value] of [
-    ["--package-set", options.packageSet],
     ["--vir-root or --vir-runtime", options.virRuntime],
     ["--vir-root or --wasm", options.wasm],
   ]) {
@@ -266,15 +271,15 @@ async function main() {
     console.log(usage);
     return;
   }
-  const [wasmBytes, packageSet] = await Promise.all([
+  const [wasmBytes, packageInput] = await Promise.all([
     readFile(options.wasm),
-    readPackageSet(options.packageSet),
+    readPackageInput({ packagePath: options.package, packageSetPath: options.packageSet }),
   ]);
   const runtimeModule = await import(pathToFileURL(options.virRuntime));
   const factory = runtimeModule.createVirRuntimeFactory({ wasmBytes });
   await factory.module();
   const runtime = await factory.instantiate();
-  runtime.loadIrPackageSetBytes(packageSet.packageBytes);
+  runtime.loadIrPackageSetBytes(packageInput.packageBytes);
   const entry = inferEntry(runtime, options.entry);
   const html = page();
 
@@ -294,8 +299,9 @@ async function main() {
       if (request.method === "GET" && url.pathname === "/api/info") {
         json(response, 200, {
           entry,
-          packages: packageSet.members.length,
-          packageSetSha256: packageSet.descriptorSha256,
+          packageInputKind: packageInput.kind,
+          packages: packageInput.members.length,
+          packageInputSha256: packageInput.inputSha256,
           wasmSha256: sha256(wasmBytes),
           maxInputBytes,
         });
@@ -349,7 +355,7 @@ async function main() {
   process.once("SIGTERM", shutdown);
   server.listen(options.port, "127.0.0.1", () => {
     console.log(`lean-zip Vir/WASM demo: http://127.0.0.1:${options.port}/`);
-    console.log(`entry: ${entry}; packages: ${packageSet.members.length}; Ctrl-C to stop`);
+    console.log(`entry: ${entry}; packages: ${packageInput.members.length}; Ctrl-C to stop`);
   });
 }
 
