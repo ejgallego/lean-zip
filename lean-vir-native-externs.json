@@ -1,0 +1,15 @@
+{
+  "format": "lean-vir-client-native-externs",
+  "version": 1,
+  "modules": ["Zip.Native.Wide"],
+  "externs": [
+    "ByteArray.pushUInt64LE",
+    "ByteArray.ugetUInt32LE",
+    "ByteArray.ugetUInt64LE",
+    "UInt64.ctzFast",
+    "ByteArray.usetUInt64LE",
+    "ByteArray.usetUInt32LE",
+    "UInt32.log2Clz"
+  ],
+  "providerSources": ["c/bytearray_wide_ffi.c"]
+}

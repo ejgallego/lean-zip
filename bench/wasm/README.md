@@ -65,6 +65,13 @@ Vir owns the authoritative executable adapter at
 the backend repository prevents its explicit fallback list from drifting away
 from Vir's package-generator and runtime acceptance.
 
+[`../../lean-vir-native-externs.json`](../../lean-vir-native-externs.json)
+selects the same seven accelerators and their existing C provider when used
+with VIR's client-native-extern manifest support. It is an optional optimized
+profile: the portable reference-body package remains the compatibility path.
+Do not set `VIR_NATIVE_EXTERN_MANIFEST` with a VIR revision that does not
+implement `lean-vir-client-native-externs` version 1.
+
 The consolidated producer revision is Vir `main` at
 `9f69f1348da15274090d9074bbeded1eafc6b27a` (`feat: support lean-zip deflate
 packages (#125)`). The last clean replay used lean-zip
@@ -115,6 +122,11 @@ inflates the raw-DEFLATE result. The page reports compressed size, hash, Vir
 call time, and Wasm memory pages. It binds only to loopback and caps UTF-8 input
 at 4 KiB because the current interpreter is intentionally a correctness path,
 not an interactive-throughput implementation.
+
+For the multi-backend browser lab—native Lean, browser-local VIR,
+`CompressionStream`, pinned fflate, and explicit FIR capability rows—see
+[`../web/README.md`](../web/README.md). The small page in this directory remains
+the minimal single-call VIR correctness demo.
 
 ## Benchmark
 
