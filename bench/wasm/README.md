@@ -65,6 +65,13 @@ Vir owns the authoritative executable adapter at
 the backend repository prevents its explicit fallback list from drifting away
 from Vir's package-generator and runtime acceptance.
 
+The consolidated producer revision is Vir `main` at
+`9f69f1348da15274090d9074bbeded1eafc6b27a` (`feat: support lean-zip deflate
+packages (#125)`). The last clean replay used lean-zip
+`f244c00a1d7ad837563b560633542755d154c654` under Vir's rc2 toolchain. Treat
+the commit identities and content hashes in a benchmark report as
+authoritative; retained `/tmp` paths are only local conveniences.
+
 Generate and retain the direct package from the Vir worktree, using a separate
 lean-zip compatibility checkout built with Vir's exact Lean 4.33.0-rc2
 toolchain:
