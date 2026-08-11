@@ -1,7 +1,7 @@
 # Vir/FIR WASM port plan
 
-Status: Phase A, Vir Phase C, and Vir correctness/memory hardening complete;
-shared benchmark contract landed; FIR and cross-backend comparison pending
+Status: Phase A and both Vir portable/client-native profiles complete; shared
+benchmark and browser comparison contracts landed; FIR integration pending
 
 Local worktree: `.worktrees/vir-fir-wasm-port`
 
@@ -29,7 +29,7 @@ Local branch: `feat/vir-fir-wasm-port`
 - The compatibility probes used detached local worktrees and independent local
   `zipCommon` worktrees at the pinned commit; no dependency was fetched.
 
-### Vir merged completion (2026-08-11)
+### Vir portable completion (2026-08-11)
 
 Vir's complete lean-zip support is merged into Vir `main` at
 `9f69f1348da15274090d9074bbeded1eafc6b27a` (`feat: support lean-zip deflate
@@ -37,6 +37,8 @@ packages (#125)`). The former feature worktree and branch were retired. A clean
 detached checkout at that exact commit was rebuilt and accepted independently
 against lean-zip `f244c00a1d7ad837563b560633542755d154c654`, with only the
 compatibility checkout's `lean-toolchain` changed from rc1 to rc2.
+The release artifacts and memory figures below are the later exact-source
+revalidation against lean-zip `220c5c5e` and Vir `5703203` after #127 merged.
 
 - `vir_extern_fallback Foo.bar, ...` accepts explicitly named transparent
   `@[extern] def`s and rejects opaque, bodyless, duplicate, non-extern, and
@@ -64,14 +66,12 @@ npm run check:native-externs                            PASS
 npm run accept:lean-zip -- RC2_LEAN_ZIP --passes 3 --keep  PASS
 ```
 
-The canonical retained package is
-`/tmp/vir-lean-zip-acceptance-QijoMk/lean-zip-acceptance.irpkg` (stable path
-shape `<retained-dir>/lean-zip-acceptance.irpkg`). It is 1,161,853 bytes with
-SHA-256 `e289cd25c8fb09e42d59c18e635b342ef44d2d5df2865c8b8a3fbee49929397b`,
+The latest release-profile package is 1,161,801 bytes with SHA-256
+`ac7b33825d2982df030016e0f67599b88f1ca83beec906d0fe4a07911737fc71`,
 682 Lean IR declarations, 136 native externs, 12 interface exports, no
-initializers, and zero JavaScript host imports. The clean shared Wasm is
-3,920,388 bytes with SHA-256
-`3f2d33fc7cd9aa79548078172dba5df457ccf5f4d67c5cf8a3beb473eec58c`.
+initializers, and zero JavaScript host imports. Its stripped release Wasm is
+740,304 bytes with SHA-256
+`b6d4916cc644344211ce1e1300f29cab3d8b8b7341540a9aeede5126d280267e`.
 
 The acceptance run made 279 native/Vir compression calls over 3,899,628 input
 bytes: 89 vectors at every level 0 through 10 repeated three times, plus 12
@@ -83,6 +83,42 @@ exactly `344,344,344` after the three matrix passes.
 This closes Phase C and the Vir portion of Phase F for correctness and repeated
 memory behavior. Interpreter performance and finer optimal-path attribution
 remain optimization work, not support blockers.
+
+### Vir client-native completion (2026-08-11)
+
+Client-native extern manifests are merged into Vir `main` at
+`5703203e9a8d755645aa3249df654ef8cadcc63d` (`feat: support client-native
+extern manifests (#127)`). The exact replay used lean-zip
+`220c5c5ecb22528799a9b78bdcba09351ac4ae9d`, rebuilt under Vir's rc2
+toolchain with no source compatibility patch other than the local
+`lean-toolchain` selection.
+
+The checked-in `lean-vir-native-externs.json` selects exactly seven declarations
+from `Zip.Native.Wide` and the single `c/bytearray_wide_ffi.c` provider. Static
+validation maps every selected Lean declaration to its `@[extern]` symbol and
+to a C definition. Dynamic package and link evidence is stronger than output
+parity alone:
+
+- the package contains 662 Lean IR declarations and 141 native externs;
+- all seven `_virExternFallback.*` clones are absent;
+- the package report maps all seven original Lean names to their `lean_zip_*`
+  raw symbols;
+- the linked native-support object defines all seven symbols and the strict
+  Wasm link has zero unresolved symbols; and
+- the boundary report records one client provider and the exact manifest path.
+
+The optimized package is 1,151,430 bytes with SHA-256
+`35700e13edd7a6cc38c4c10048ed324115e9c6dff052ab2ff371b23d1cbfb2c6`.
+Its stripped release Wasm is 742,198 bytes with SHA-256
+`aff078f02a58e3a56cc6f6a96f417ed1e4fc018eedb488242e40b442fcf65fe2`.
+
+Three-pass acceptance made the same 279 compression calls and nine prescan
+decisions as the portable profile. Every result was byte-identical to native
+and independently inflated to the input. Wasm memory stabilized at
+`338,338,338` pages, versus `344,344,344` for the exact-source portable run.
+Both immutable profile snapshots also passed the browser comparison smoke with
+four verified lanes. Tiny interactive timings remain smoke evidence, not a
+performance claim.
 
 ### Shared benchmark checkpoint (2026-08-11)
 
@@ -97,21 +133,21 @@ hashes the executables, sources, runtime, shared Wasm, direct package or
 package-set descriptor, and every package member. Reports must be written
 outside the repository and are never overwritten.
 
-The canonical merged-main package passes the repository-owned smoke demo at
-levels 1 and 6. The two-pass plumbing report at
-`/tmp/lean-zip-vir-9f69f13-smoke.json` records clean Vir identity, package and
-Wasm hashes, native byte equality, and independent inflation. Its tiny input,
-single sample per block, and multi-second interpreter calls are integration
-evidence, not an optimization claim. Track D remains authoritative for native
+Both merged-main profiles pass the repository-owned smoke demo at levels 1 and
+6 and the multi-backend browser smoke at level 6. Artifact reports record clean
+Vir identity, package and Wasm hashes, native byte equality, and independent
+inflation. Tiny inputs and single-sample browser timings are integration
+evidence, not optimization claims. Track D remains authoritative for native
 compressor throughput and compression-ratio claims.
 
-### Comparison-lab reassessment (2026-08-11)
+### Comparison-lab completion (2026-08-11)
 
-The browser comparison can now start without waiting on Vir. Native Lean has a
-binary oracle and steady-state runner; Vir has a clean identified producer,
-runtime, package, JavaScript byte boundary, and repeated-call evidence. The
-first page can therefore implement native-reference, Vir, browser
-`CompressionStream`, and pure-JavaScript adapters behind one worker protocol.
+The browser comparison now runs native-reference, Vir, browser
+`CompressionStream`, and pinned fflate adapters behind one worker protocol.
+Native Lean has a binary oracle and steady-state runner; Vir has a clean
+identified producer, runtime, package, JavaScript byte boundary, and
+repeated-call evidence. Each lane is independently inflated, and the Lean lanes
+must additionally match native bytes exactly.
 
 FIR must expose two distinct rows rather than one ambiguous "FIR" result:
 
@@ -133,10 +169,10 @@ worktree currently contains unrelated in-progress resident-runtime and Verso
 HTML changes, so lean-zip must consume a later clean checkpoint or a separate
 clean FIR worktree, never that dirty state.
 
-The comparison page should therefore capability-gate both FIR rows. It can
-land and remain useful before either artifact is present, while preserving the
-same raw-DEFLATE input/output contract for insertion of the C/Emscripten row
-first and FIR-native row later.
+The comparison page therefore capability-gates both FIR rows and remains useful
+before either artifact is present. It preserves the same raw-DEFLATE
+input/output contract for insertion of the C/Emscripten row first and FIR-native
+row later.
 
 This plan assumes that "the main routine" means the pure compressor entry point
 `Zip.Native.Deflate.deflateRaw`, rather than the `ZipTest.main` test runner or the
@@ -179,8 +215,8 @@ The local repositories currently disagree on their Lean compiler revision:
 
 | Repository | Inspected revision | Lean toolchain | Role |
 | --- | --- | --- | --- |
-| lean-zip | `f244c00a` | `v4.33.0-rc1` | application, native oracle, and comparison harness |
-| Vir | `9f69f13` | `v4.33.0-rc2` | merged IR package generator and shared WASM interpreter |
+| lean-zip | `220c5c5e` | `v4.33.0-rc1` | application, native oracle, and comparison harness |
+| Vir | `5703203` | `v4.33.0-rc2` | merged portable/client-native package generator and shared WASM interpreter |
 | FIR generation lane | `473d5ec3` | `v4.32.0` | final-LCNF-to-WASM and browser-package pipeline |
 
 Generated Lean IR/LCNF is compiler-version-sensitive, so each backend must
@@ -203,9 +239,10 @@ lean-zip integration/driver worktree.
 
 `deflateRaw` is pure Lean at the source level, but the compiled compression
 closure reaches seven lean-zip native accelerators. Each declaration has a Lean
-reference body. Vir now selects those bodies through its authenticated explicit
-fallback boundary; a compiler-native FIR package can instead link the project
-providers, while FIR-native still needs an explicit lowering/provider decision.
+reference body. Vir can select those bodies through its authenticated explicit
+fallback boundary or select the same seven declarations as native and link the
+project provider through the client manifest. FIR-native still needs an explicit
+lowering/provider decision.
 
 | Lean operation | Native symbol | Compression use |
 | --- | --- | --- |
@@ -368,8 +405,9 @@ the pinned toolchain revision, Vir package/JS smoke tests, and FIR's documented
 ## 6. Principal risks
 
 1. Compiler drift: rc1, rc2, and 4.32 cannot safely share generated IR/LCNF.
-2. Native boundary: seven lean-zip externs and `Float.log2` need portable bodies
-   or explicit WASM providers.
+2. Native boundary: resolved for both Vir profiles; FIR must still choose
+   portable lowerings or explicit WASM providers for the seven lean-zip externs
+   and preserve the `Float.log2` prescan decision.
 3. FIR ByteArray: semantic support exists, but concrete physical layout and the
    required mutation/allocation operations are incomplete.
 4. Closure size: production imports theorem-backed helpers and large matcher

@@ -73,11 +73,12 @@ Do not set `VIR_NATIVE_EXTERN_MANIFEST` with a VIR revision that does not
 implement `lean-vir-client-native-externs` version 1.
 
 The consolidated producer revision is Vir `main` at
-`9f69f1348da15274090d9074bbeded1eafc6b27a` (`feat: support lean-zip deflate
-packages (#125)`). The last clean replay used lean-zip
-`f244c00a1d7ad837563b560633542755d154c654` under Vir's rc2 toolchain. Treat
-the commit identities and content hashes in a benchmark report as
-authoritative; retained `/tmp` paths are only local conveniences.
+`5703203e9a8d755645aa3249df654ef8cadcc63d` (`feat: support client-native
+extern manifests (#127)`), which includes the portable lean-zip support from
+`9f69f1348da15274090d9074bbeded1eafc6b27a` (#125). The last clean two-profile
+replay used lean-zip `220c5c5ecb22528799a9b78bdcba09351ac4ae9d` under Vir's
+rc2 toolchain. Treat the commit identities and content hashes in a benchmark
+report as authoritative; retained `/tmp` paths are only local conveniences.
 
 Generate and retain the direct package from the Vir worktree, using a separate
 lean-zip compatibility checkout built with Vir's exact Lean 4.33.0-rc2
@@ -85,8 +86,24 @@ toolchain:
 
 ```text
 cd /path/to/vir
+npm run build:demo:release
 npm run accept:lean-zip -- /path/to/lean-zip-rc2 --passes 3 --keep
 ```
+
+For the optimized profile, use the client manifest for both runtime and package
+generation:
+
+```text
+cd /path/to/vir
+VIR_NATIVE_EXTERN_MANIFEST=/path/to/lean-zip-rc2/lean-vir-native-externs.json \
+  npm run build:demo:release
+VIR_NATIVE_EXTERN_MANIFEST=/path/to/lean-zip-rc2/lean-vir-native-externs.json \
+  npm run accept:lean-zip -- /path/to/lean-zip-rc2 --passes 3 --keep
+```
+
+Do not rebuild one half of a profile before retaining or serving the other:
+the generated package and `vir-upstream.wasm` must come from the same manifest
+setting. The comparison server snapshots both inputs when it starts.
 
 The primary lean-zip checkout remains on rc1; source compatibility does not
 make rc1-generated IR compatible with Vir's rc2 runtime. The acceptance
@@ -96,7 +113,7 @@ directory containing `lean-zip-acceptance.irpkg` and its package report.
 Consume that artifact directly:
 
 ```text
-VIR=/home/egallego/lean/vir/.worktrees/lean-zip-deflate-probe
+VIR=/path/to/vir
 PKG=/tmp/vir-lean-zip-acceptance-.../lean-zip-acceptance.irpkg
 ENTRY=VirLeanZipAcceptance.compressRaw
 

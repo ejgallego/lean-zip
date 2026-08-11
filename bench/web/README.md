@@ -90,13 +90,14 @@ its capability flag becomes available.
 ## VIR portable and client-native profiles
 
 The default VIR artifact uses the seven explicit portable Lean reference
-bodies from VIR's lean-zip adapter. VIR's client-native-extern manifest lane
-can instead consume [`../../lean-vir-native-externs.json`](../../lean-vir-native-externs.json)
-and compile lean-zip's existing `c/bytearray_wide_ffi.c` provider into the
-shared runtime. Both profiles use the same browser worker and correctness
-contract; artifact hashes in the report identify which one was actually
-served. Keep the portable profile as the landing baseline until the generic
-manifest support is merged in VIR.
+bodies from VIR's lean-zip adapter. Client-native extern support is merged in
+VIR `main` at `5703203e9a8d755645aa3249df654ef8cadcc63d`; it consumes
+[`../../lean-vir-native-externs.json`](../../lean-vir-native-externs.json) and
+compiles lean-zip's existing `c/bytearray_wide_ffi.c` provider into the shared
+runtime. Both profiles use the same browser worker and correctness contract;
+artifact hashes in the report identify which one was actually served. The
+portable profile remains the compatibility baseline, while client-native is
+the supported optimized profile.
 
 Pass `--vir-profile client-native` when serving a package and Wasm built with
 that manifest. The label appears beside the effective setting and in the JSON

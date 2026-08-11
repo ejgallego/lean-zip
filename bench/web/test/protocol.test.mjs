@@ -39,13 +39,40 @@ test("throughput and backend settings remain backend-specific", () => {
 });
 
 test("client-native profile closes over lean-zip's seven wide accelerators", async () => {
+  const expected = [
+    ["ByteArray.pushUInt64LE", "lean_zip_push_u64le", "pushUInt64LE"],
+    ["ByteArray.ugetUInt32LE", "lean_zip_uget_u32le", "ugetUInt32LE"],
+    ["ByteArray.ugetUInt64LE", "lean_zip_uget_u64le", "ugetUInt64LE"],
+    ["UInt64.ctzFast", "lean_zip_ctz64", "UInt64.ctzFast"],
+    ["ByteArray.usetUInt64LE", "lean_zip_uset_u64le", "usetUInt64LE"],
+    ["ByteArray.usetUInt32LE", "lean_zip_uset_u32le", "usetUInt32LE"],
+    ["UInt32.log2Clz", "lean_zip_uint32_log2_clz", "UInt32.log2Clz"],
+  ];
   const manifest = JSON.parse(await readFile(
     new URL("../../../lean-vir-native-externs.json", import.meta.url),
     "utf8",
   ));
+  const leanSource = await readFile(
+    new URL("../../../Zip/Native/Wide.lean", import.meta.url),
+    "utf8",
+  );
+  const providerSource = await readFile(
+    new URL("../../../c/bytearray_wide_ffi.c", import.meta.url),
+    "utf8",
+  );
   assert.equal(manifest.format, "lean-vir-client-native-externs");
   assert.equal(manifest.version, 1);
   assert.deepEqual(manifest.modules, ["Zip.Native.Wide"]);
-  assert.equal(manifest.externs.length, 7);
+  assert.deepEqual(manifest.externs, expected.map(([name]) => name));
   assert.deepEqual(manifest.providerSources, ["c/bytearray_wide_ffi.c"]);
+  for (const [name, symbol, declaration] of expected) {
+    assert.ok(
+      leanSource.includes(`@[extern "${symbol}"]\ndef ${declaration}`),
+      `${name} must retain its ${symbol} extern declaration`,
+    );
+    assert.ok(
+      providerSource.includes(`${symbol}(`),
+      `${name} must have a ${symbol} provider definition`,
+    );
+  }
 });
