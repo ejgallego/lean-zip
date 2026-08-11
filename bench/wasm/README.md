@@ -88,6 +88,22 @@ The export name is inferred when the package contains one export, so the same
 command works with `Zip.VirProbeFull.compressRaw` and the permanent
 `Zip.VirBench.compressRaw` adapter.
 
+## Browser demo
+
+Serve a loopback-only interactive page using the same package set:
+
+```text
+node bench/wasm/serve.mjs \
+  --vir-root "$VIR" --package-set "$SET"
+```
+
+Open `http://127.0.0.1:4173/`. Each request invokes the real Vir/Wasm entry,
+compares its output byte-for-byte with `zip-wasm-oracle`, and independently
+inflates the raw-DEFLATE result. The page reports compressed size, hash, Vir
+call time, and Wasm memory pages. It binds only to loopback and caps UTF-8 input
+at 4 KiB because the current interpreter is intentionally a correctness path,
+not an interactive-throughput implementation.
+
 ## Benchmark
 
 Reports must be new paths outside the repository so creating a report cannot
