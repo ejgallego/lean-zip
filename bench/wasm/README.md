@@ -73,9 +73,10 @@ Do not set `VIR_NATIVE_EXTERN_MANIFEST` with a VIR revision that does not
 implement `lean-vir-client-native-externs` version 1.
 
 The consolidated producer revision is Vir `main` at
-`5703203e9a8d755645aa3249df654ef8cadcc63d` (`feat: support client-native
-extern manifests (#127)`), which includes the portable lean-zip support from
-`9f69f1348da15274090d9074bbeded1eafc6b27a` (#125). The last clean two-profile
+`d43a947e65cec5dbda9e2393a5e74d1150ca144f` (`fix: persist IR interpreter
+caches across calls (#131)`), which includes client-native extern support from
+`5703203e9a8d755645aa3249df654ef8cadcc63d` (#127) and portable lean-zip support
+from `9f69f1348da15274090d9074bbeded1eafc6b27a` (#125). The last clean two-profile
 replay used lean-zip `220c5c5ecb22528799a9b78bdcba09351ac4ae9d` under Vir's
 rc2 toolchain. Treat the commit identities and content hashes in a benchmark
 report as authoritative; retained `/tmp` paths are only local conveniences.

@@ -9,6 +9,8 @@ function wasmMemoryPages(runtime) {
 }
 
 async function prepareVir(config) {
+  const prepareStarted = performance.now();
+  let started = prepareStarted;
   const [{ createVirRuntimeFactory }, wasmResponse, ...packageResponses] = await Promise.all([
     import(config.runtimeUrl),
     fetch(config.wasmUrl, { cache: "no-store" }),
@@ -21,18 +23,78 @@ async function prepareVir(config) {
   const packageBytes = await Promise.all(
     packageResponses.map(async (response) => new Uint8Array(await response.arrayBuffer())),
   );
+  const acquireMs = performance.now() - started;
+  started = performance.now();
   const factory = createVirRuntimeFactory({ wasmBytes });
   await factory.module();
+  const compileMs = performance.now() - started;
+  started = performance.now();
   const runtime = await factory.instantiate();
+  const instantiateMs = performance.now() - started;
+  started = performance.now();
   runtime.loadIrPackageSetBytes(packageBytes);
+  const packageLoadMs = performance.now() - started;
   if (runtime.findManifestEntry(config.entry) === null) {
     runtime.dispose();
     throw new Error(`VIR package does not export ${config.entry}`);
   }
+  const diagnosticReady = config.diagnostic !== null &&
+    runtime.findManifestEntry(config.diagnostic.matcherEntry) !== null &&
+    runtime.findManifestEntry(config.diagnostic.baseEntry) !== null;
+  const bytesEqual = (left, right) => left.byteLength === right.byteLength &&
+    left.every((value, index) => value === right[index]);
   return {
     artifactBytes: wasmBytes.byteLength + packageBytes.reduce((sum, value) => sum + value.byteLength, 0),
     profile: config.profile,
     compress: (input, level) => runtime.call(config.entry, input, level),
+    compressTimed: (input, level) => runtime.callTimed(config.entry, input, level),
+    preparePhases: {
+      acquireMs,
+      compileMs,
+      instantiateMs,
+      packageLoadMs,
+      totalMs: performance.now() - prepareStarted,
+    },
+    diagnose: !diagnosticReady ? null : async (input, level) => {
+      if (level < 1) throw new Error("VIR stage profiling requires Lean level 1 or higher");
+      const pagesBefore = wasmMemoryPages(runtime);
+      const warmupOutput = runtime.call(config.entry, input, level);
+      const matcher = runtime.callTimed(config.diagnostic.matcherEntry, input, level);
+      const packedTokens = matcher.value;
+      const base = runtime.callTimed(
+        config.diagnostic.baseEntry,
+        input,
+        packedTokens,
+      );
+      const directEntry = config.diagnostic.levelEntries[String(level)] ?? null;
+      const direct = directEntry !== null && runtime.findManifestEntry(directEntry) !== null
+        ? runtime.callTimed(directEntry, input)
+        : null;
+      const optimalEntry = config.diagnostic.optimalEntries[String(level)] ?? null;
+      const optimal = optimalEntry !== null && runtime.findManifestEntry(optimalEntry) !== null
+        ? runtime.callTimed(optimalEntry, input)
+        : null;
+      const whole = runtime.callTimed(config.entry, input, level);
+      return {
+        inputBytes: input.byteLength,
+        outputBytes: whole.value.byteLength,
+        packedBytes: packedTokens.byteLength,
+        tokens: packedTokens.byteLength / 4,
+        matcher: matcher.timings,
+        base: base.timings,
+        baseOutputBytes: String(base.value),
+        direct: direct?.timings ?? null,
+        directEntry,
+        directMatchesWhole: direct === null ? null : bytesEqual(direct.value, whole.value),
+        optimal: optimal?.timings ?? null,
+        optimalEntry,
+        optimalOutputBytes: optimal?.value?.byteLength ?? null,
+        whole: whole.timings,
+        warmupMatchesWhole: bytesEqual(warmupOutput, whole.value),
+        pagesBefore,
+        pagesAfter: wasmMemoryPages(runtime),
+      };
+    },
     memory: () => wasmMemoryPages(runtime),
   };
 }
@@ -65,22 +127,93 @@ async function prepareFflate() {
   };
 }
 
+async function prepareFirNative(config) {
+  const prepareStarted = performance.now();
+  let started = prepareStarted;
+  const [{ createLeanZipStoredAdapter }, wasmResponse, descriptorResponse] = await Promise.all([
+    import(config.adapterUrl),
+    fetch(config.wasmUrl, { cache: "no-store" }),
+    fetch(config.descriptorUrl, { cache: "no-store" }),
+  ]);
+  for (const response of [wasmResponse, descriptorResponse]) {
+    if (!response.ok) throw new Error(`FIR artifact fetch failed: HTTP ${response.status}`);
+  }
+  const wasmBytes = new Uint8Array(await wasmResponse.arrayBuffer());
+  const descriptorBytes = await descriptorResponse.arrayBuffer();
+  const descriptor = JSON.parse(new TextDecoder().decode(descriptorBytes));
+  const acquireMs = performance.now() - started;
+  started = performance.now();
+  const module = await WebAssembly.compile(wasmBytes);
+  const compileMs = performance.now() - started;
+  started = performance.now();
+  const adapter = await createLeanZipStoredAdapter({ module, descriptor });
+  const instantiateMs = performance.now() - started;
+  let memoryPages = adapter.memory.buffer.byteLength / 65536;
+  const call = (input, level) => {
+    if (level !== 0) throw new Error("FIR native stored supports Lean level 0 only");
+    const result = adapter.compressStored(input);
+    memoryPages = result.memory.pages;
+    return result;
+  };
+  return {
+    artifactBytes: wasmBytes.byteLength + descriptorBytes.byteLength,
+    profile: config.profile,
+    compress: (input, level) => call(input, level).bytes,
+    compressTimed: (input, level) => {
+      const result = call(input, level);
+      return {
+        value: result.bytes,
+        timings: {
+          marshalMs: result.timings.encodeMs,
+          executeMs: result.timings.executeMs,
+          decodeMs: result.timings.decodeMs,
+          hostMs: 0,
+          totalMs: result.timings.totalMs,
+        },
+        details: { arena: result.memory },
+      };
+    },
+    preparePhases: {
+      acquireMs,
+      compileMs,
+      instantiateMs,
+      packageLoadMs: 0,
+      totalMs: performance.now() - prepareStarted,
+    },
+    memory: () => memoryPages,
+  };
+}
+
 async function prepare(config) {
   const started = performance.now();
   if (backendId === "vir") prepared = await prepareVir(config);
+  else if (backendId === "fir-native") prepared = await prepareFirNative(config);
   else if (backendId === "compression-stream") prepared = await prepareCompressionStream();
   else if (backendId === "fflate") prepared = await prepareFflate();
   else throw new Error(`${backendId} is not a browser-worker backend`);
   return {
     prepareMs: performance.now() - started,
+    preparePhases: prepared.preparePhases ?? null,
     artifactBytes: prepared.artifactBytes,
     wasmPages: prepared.memory(),
   };
 }
 
 async function compressOnce(input, level) {
+  if (prepared.compressTimed !== undefined) {
+    const { value, timings, details = null } = await prepared.compressTimed(input, level);
+    return {
+      output: value instanceof Uint8Array ? value : new Uint8Array(value),
+      phases: timings,
+      details,
+    };
+  }
   const output = await prepared.compress(input, level);
-  return output instanceof Uint8Array ? output : new Uint8Array(output);
+  return {
+    output: output instanceof Uint8Array ? output : new Uint8Array(output),
+    phases: null,
+    details: null,
+  };
 }
 
 async function run(inputBuffer, settings) {
@@ -89,26 +222,55 @@ async function run(inputBuffer, settings) {
   const memoryPagesBefore = prepared.memory();
 
   let started = performance.now();
-  let output = await compressOnce(input, settings.level);
+  let call = await compressOnce(input, settings.level);
   const firstCallMs = performance.now() - started;
+  let output = call.output;
+  const firstCallPhases = call.phases;
+  const firstCallDetails = call.details;
+  const memoryPagesAfterFirst = prepared.memory();
 
   let checksum = output.byteLength;
   for (let call = 0; call < settings.warmups; call += 1) {
-    output = await compressOnce(input, settings.level);
+    const warmup = await compressOnce(input, settings.level);
+    output = warmup.output;
     checksum += output.byteLength;
   }
+  const memoryPagesAfterWarmups = prepared.memory();
 
   const sampleMs = [];
+  const phaseSamples = [];
+  const memoryPageSamples = [];
+  const sampleDetails = [];
   for (let sample = 0; sample < settings.samples; sample += 1) {
+    const phaseTotals = {};
     started = performance.now();
     for (let iteration = 0; iteration < settings.iterations; iteration += 1) {
-      output = await compressOnce(input, settings.level);
+      call = await compressOnce(input, settings.level);
+      output = call.output;
+      if (call.phases !== null) {
+        for (const [name, value] of Object.entries(call.phases)) {
+          phaseTotals[name] = (phaseTotals[name] ?? 0) + value;
+        }
+      }
       checksum += output.byteLength;
     }
     sampleMs.push((performance.now() - started) / settings.iterations);
+    memoryPageSamples.push(prepared.memory());
+    sampleDetails.push(call.details);
+    if (Object.keys(phaseTotals).length > 0) {
+      phaseSamples.push(Object.fromEntries(
+        Object.entries(phaseTotals).map(([name, value]) => [name, value / settings.iterations]),
+      ));
+    }
   }
 
   const medianMs = median(sampleMs);
+  const phaseMedians = phaseSamples.length === 0
+    ? null
+    : Object.fromEntries(Object.keys(phaseSamples[0]).map((name) => [
+      name,
+      median(phaseSamples.map((sample) => sample[name])),
+    ]));
   const stableOutput = output.slice();
   return {
     id: backendId,
@@ -120,14 +282,30 @@ async function run(inputBuffer, settings) {
       : backend.setting(settings.level),
     profile: prepared.profile ?? null,
     firstCallMs,
+    firstCallPhases,
+    firstCallDetails,
     sampleMs,
+    phaseSamples,
+    phaseMedians,
+    sampleDetails,
     medianMs,
     mibPerSecond: mibPerSecond(input.byteLength, medianMs),
     checksum,
     memoryPagesBefore,
+    memoryPagesAfterFirst,
+    memoryPagesAfterWarmups,
+    memoryPageSamples,
     memoryPagesAfter: prepared.memory(),
     output: stableOutput,
   };
+}
+
+async function diagnose(inputBuffer, level) {
+  if (prepared === null) throw new Error("backend has not been prepared");
+  if (prepared.diagnose === null || prepared.diagnose === undefined) {
+    throw new Error("VIR diagnostic package is unavailable");
+  }
+  return prepared.diagnose(new Uint8Array(inputBuffer), level);
 }
 
 self.addEventListener("message", async (event) => {
@@ -137,6 +315,8 @@ self.addEventListener("message", async (event) => {
       ? await prepare(value)
       : type === "run"
         ? await run(value.input, value.settings)
+        : type === "diagnose"
+          ? await diagnose(value.input, value.level)
         : (() => { throw new Error(`unknown worker request: ${type}`); })();
     const transfer = result.output instanceof Uint8Array ? [result.output.buffer] : [];
     self.postMessage({ id, ok: true, value: result }, transfer);

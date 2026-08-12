@@ -13,10 +13,12 @@
       <span class="wordmark">lean-zip / lab 01</span>
       <span id="isolation" class="chip">checking isolation</span>
     </div>
-    <p class="kicker">One stream. Five execution paths.</p>
+    <p class="kicker">One stream. Verified runtime and native paths.</p>
     <h1>Compression,<br><em>under glass.</em></h1>
     <p class="lede">Run the production Lean raw-DEFLATE compressor beside browser-native and JavaScript
-      codecs. Outputs are independently inflated; matching Lean backends must also agree byte-for-byte.</p>
+      codecs. VIR uses the package-scoped interpreter runtime, while FIR's first genuine native slice joins
+      level 0. The superseded per-call-cache VIR runtime is excluded. Outputs are independently inflated;
+      matching Lean backends must also agree byte-for-byte.</p>
   </header>
 
   <main>
@@ -33,6 +35,22 @@
         <span id="input-size">—</span>
       </div>
       <div class="controls">
+        <label>Dataset
+          <select id="preset">
+            <option value="custom" selected>Editable input</option>
+            <option value="repeated">Repeated text</option>
+            <option value="structured">Structured records</option>
+            <option value="random">Seeded random</option>
+            <option value="zeros">Zero bytes</option>
+          </select>
+        </label>
+        <label>Dataset size
+          <select id="preset-size">
+            <option value="1024">1 KiB</option><option value="16384" selected>16 KiB</option>
+            <option value="65536">64 KiB</option><option value="262144">256 KiB</option>
+            <option value="1048576">1 MiB</option>
+          </select>
+        </label>
         <label>Lean level
           <select id="level">
             <option>0</option><option>1</option><option>2</option><option>3</option><option>4</option>
@@ -42,12 +60,15 @@
         <label>Samples
           <select id="samples"><option>1</option><option selected>3</option><option>5</option><option>9</option></select>
         </label>
+        <label>Warmups
+          <select id="warmups"><option>0</option><option selected>1</option><option>3</option><option>5</option><option>10</option></select>
+        </label>
         <label>Iterations / sample
-          <select id="iterations"><option selected>1</option><option>3</option><option>5</option></select>
+          <select id="iterations"><option selected>1</option><option>3</option><option>5</option><option>10</option><option>20</option></select>
         </label>
         <button id="run" type="button"><span>Run comparison</span><b>→</b></button>
       </div>
-      <p class="hint">VIR currently interprets Lean IR. Keep its input small; latency is expected and is itself useful evidence.</p>
+      <p class="hint">VIR currently interprets Lean IR. FIR native is a real zero-import stored-DEFLATE artifact and participates only at level 0.</p>
     </section>
 
     <section class="results-section">
@@ -66,10 +87,34 @@
       </div>
     </section>
 
+    <section class="diagnostic-panel panel">
+      <div class="section-heading">
+        <div><span class="step">03</span><h2>VIR call anatomy</h2></div>
+        <p id="vir-phase-status" aria-live="polite">Run VIR to separate setup, boundary, and interpreter time.</p>
+      </div>
+      <dl id="vir-phase-metrics" class="diagnostic-metrics"></dl>
+    </section>
+
+    <section class="diagnostic-panel panel">
+      <div class="section-heading">
+        <div><span class="step">04</span><h2>VIR production stages</h2></div>
+        <p id="diagnostic-status" aria-live="polite">Loading production stage exports…</p>
+      </div>
+      <div class="diagnostic-copy">
+        <p>After an explicit package warmup, measure the matcher, base preparation, direct level body where
+          exposed, and the whole compressor on this exact input. Isolated calls help attribution but are not
+          additive substitutes for the production VIR lane above.</p>
+        <button id="diagnostic-run" class="diagnostic-button" type="button" disabled>
+          <span>Profile production stages</span><b>↘</b>
+        </button>
+      </div>
+      <dl id="diagnostic-metrics" class="diagnostic-metrics"></dl>
+    </section>
+
     <section class="analysis-grid">
       <article class="panel chart-panel">
         <div class="section-heading compact">
-          <div><span class="step">03</span><h2>Shape of the run</h2></div>
+          <div><span class="step">05</span><h2>Shape of the run</h2></div>
         </div>
         <p class="chart-note">Lower is smaller. Farther right is faster. Throughput uses a logarithmic axis.</p>
         <svg id="chart" viewBox="0 0 700 360" role="img" aria-label="Compression ratio versus throughput">
@@ -78,7 +123,7 @@
       </article>
       <article class="panel identity-panel">
         <div class="section-heading compact">
-          <div><span class="step">04</span><h2>Evidence packet</h2></div>
+          <div><span class="step">06</span><h2>Evidence packet</h2></div>
         </div>
         <dl id="identity"><dt>State</dt><dd>loading</dd></dl>
         <button id="export" class="secondary" type="button" disabled>Export JSON report</button>
@@ -88,9 +133,11 @@
     <section class="method">
       <h2>Reading the numbers</h2>
       <div class="method-grid">
-        <p><b>Comparable Lean bytes.</b> Native Lean and VIR use the same lean-zip level and must emit exactly the same raw stream.</p>
+        <p><b>Comparable Lean bytes.</b> Native Lean and VIR use the same level and must emit exactly the same stream. FIR joins this exact check at level 0.</p>
         <p><b>Independent codec settings.</b> CompressionStream has no level API; fflate caps its knob at 9. Their level labels are not quality equivalence claims.</p>
         <p><b>Timing boundaries.</b> Browser calls run in dedicated workers. Native samples are measured inside one Lean process; validation happens afterward.</p>
+        <p><b>Supported VIR only.</b> VIR persists nullary constants for one loaded package set. The superseded per-call-cache runtime is not part of the dataset.</p>
+        <p><b>FIR scope.</b> FIR's resident ByteArray stored compressor is executable and zero-import. Level 1/full raw DEFLATE remain gated on final-capture support.</p>
       </div>
     </section>
   </main>

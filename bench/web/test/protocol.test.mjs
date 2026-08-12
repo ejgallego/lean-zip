@@ -9,12 +9,24 @@ import {
   bytesToBase64,
   median,
   mibPerSecond,
+  makeBenchmarkInput,
   normalizeRunSettings,
 } from "../app/protocol.mjs";
 
 test("upper median matches the lean-zip benchmark convention", () => {
   assert.equal(median([9, 1, 4]), 4);
   assert.equal(median([9, 1, 4, 2]), 4);
+});
+
+test("benchmark inputs are exact-size and deterministic", () => {
+  for (const kind of ["repeated", "structured", "random", "zeros"]) {
+    const left = makeBenchmarkInput(kind, 4097);
+    const right = makeBenchmarkInput(kind, 4097);
+    assert.equal(left.byteLength, 4097);
+    assert.deepEqual(left, right);
+  }
+  assert.notDeepEqual(makeBenchmarkInput("structured", 1024), makeBenchmarkInput("repeated", 1024));
+  assert.throws(() => makeBenchmarkInput("unknown", 10));
 });
 
 test("binary base64 round-trip is lossless", () => {
@@ -36,6 +48,9 @@ test("throughput and backend settings remain backend-specific", () => {
   assert.equal(mibPerSecond(1024 * 1024, 500), 2);
   assert.equal(backendById("compression-stream").setting(9), "browser default (no level API)");
   assert.equal(backendById("fflate").setting(10), "fflate level 9");
+  assert.equal(backendById("vir").setting(6), "lean-zip level 6");
+  assert.equal(backendById("fir-native").setting(0), "stored DEFLATE · Lean level 0");
+  assert.equal(backendById("fir-native").setting(6), "stored DEFLATE · level 0 only");
 });
 
 test("client-native profile closes over lean-zip's seven wide accelerators", async () => {

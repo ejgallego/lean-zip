@@ -37,6 +37,8 @@ options:
   --native-bench PATH      default: .lake/build/bin/zip-wasm-bench-native
   --entry NAME             default: VirLeanZipAcceptance.compressRaw
   --vir-profile LABEL      artifact profile label (default: portable)
+  --fir-native-package PATH
+                           optional immutable FIR stored-DEFLATE package directory
   --port N                 loopback port (default: 4173)
 `;
 
@@ -51,6 +53,7 @@ function parseArgs(argv) {
     nativeBench: join(repoRoot, ".lake/build/bin/zip-wasm-bench-native"),
     entry: "VirLeanZipAcceptance.compressRaw",
     virProfile: "portable",
+    firNativePackage: null,
     port: 4173,
   };
   const take = (index, option) => {
@@ -67,6 +70,9 @@ function parseArgs(argv) {
     else if (option === "--native-oracle") options.nativeOracle = resolve(take(index++, option));
     else if (option === "--native-bench") options.nativeBench = resolve(take(index++, option));
     else if (option === "--entry") options.entry = take(index++, option);
+    else if (option === "--fir-native-package") {
+      options.firNativePackage = resolve(take(index++, option));
+    }
     else if (option === "--vir-profile") {
       options.virProfile = take(index++, option);
       if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,63}$/.test(options.virProfile)) {
@@ -216,6 +222,42 @@ async function fileIdentity(path, executable = false) {
   return { path, bytes: metadata.size, sha256: await sha256File(path) };
 }
 
+async function readFirNativePackage(directory) {
+  const names = [
+    "BUILD.json",
+    "SHA256SUMS",
+    "lean-zip-stored-browser-adapter.mjs",
+    "lean-zip-stored.wasm",
+    "lean-zip-stored.wasm.json",
+    "smoke.mjs",
+  ];
+  const entries = await Promise.all(names.map(async (name) => [
+    name,
+    await readFile(join(directory, name)),
+  ]));
+  const files = new Map(entries);
+  const build = JSON.parse(files.get("BUILD.json").toString("utf8"));
+  const descriptor = JSON.parse(files.get("lean-zip-stored.wasm.json").toString("utf8"));
+  if (build.schemaVersion !== "fir.lean-zip.stored.build/v1") {
+    throw new Error(`unsupported FIR stored package schema: ${build.schemaVersion}`);
+  }
+  if (build.entry?.sourceName !== "Zip.Wasm.compressStored" ||
+      descriptor.entry !== "Zip.Wasm.compressStored") {
+    throw new Error("FIR package does not expose Zip.Wasm.compressStored");
+  }
+  const wasmSha256 = sha256(files.get("lean-zip-stored.wasm"));
+  if (wasmSha256 !== build.wasm?.sha256) {
+    throw new Error("FIR package Wasm digest differs from BUILD.json");
+  }
+  for (const line of files.get("SHA256SUMS").toString("utf8").trim().split("\n")) {
+    const match = /^([0-9a-f]{64})  ([A-Za-z0-9._-]+)$/.exec(line);
+    if (match === null || !files.has(match[2]) || sha256(files.get(match[2])) !== match[1]) {
+      throw new Error(`FIR package checksum mismatch: ${line}`);
+    }
+  }
+  return { directory, files, build, descriptor, wasmSha256 };
+}
+
 async function runNative(options, input, settings) {
   const workDir = await mkdtemp(join(tmpdir(), "lean-zip-web-native-"));
   try {
@@ -285,6 +327,9 @@ async function main() {
   ]);
   const wasmIdentity = { path: options.wasm, bytes: wasmBytes.byteLength, sha256: sha256(wasmBytes) };
   const packageUrls = packageInput.members.map((_, index) => `/artifacts/package-${index}.irpkg`);
+  const firNative = options.firNativePackage === null
+    ? null
+    : await readFirNativePackage(options.firNativePackage);
   const info = {
     format: "lean-zip-web-comparison-info",
     version: 1,
@@ -296,6 +341,28 @@ async function main() {
       wasmUrl: "/artifacts/vir-upstream.wasm",
       packageUrls,
       profile: options.virProfile,
+      diagnostic: {
+        matcherEntry: "VirLeanZipAcceptance.profileMatchTokens",
+        baseEntry: "VirLeanZipAcceptance.profileBasePrepSize",
+        levelEntries: {
+          5: "VirLeanZipAcceptance.profileLevel5",
+          6: "VirLeanZipAcceptance.profileLevel6",
+          7: "VirLeanZipAcceptance.profileLevel7",
+          8: "VirLeanZipAcceptance.profileLevel8",
+          9: "VirLeanZipAcceptance.profileLevel9",
+          10: "VirLeanZipAcceptance.profileLevel10",
+        },
+        optimalEntries: {
+          9: "VirLeanZipAcceptance.profileOptimalFast",
+          10: "VirLeanZipAcceptance.profileOptimalExact",
+        },
+      },
+    },
+    firNative: firNative === null ? null : {
+      adapterUrl: "/fir/lean-zip-stored-browser-adapter.mjs",
+      wasmUrl: "/artifacts/fir-lean-zip-stored.wasm",
+      descriptorUrl: "/artifacts/fir-lean-zip-stored.wasm.json",
+      profile: "resident-bytearray-v2",
     },
     backends: [
       { id: "native", available: true },
@@ -309,8 +376,11 @@ async function main() {
       },
       {
         id: "fir-native",
-        available: false,
-        reason: "Awaiting FIR-native captured ByteArray closure/admission support",
+        available: firNative !== null,
+        levels: [0],
+        reason: firNative === null
+          ? "FIR-native stored artifact not attached"
+          : null,
       },
     ],
     repositories: {
@@ -335,6 +405,18 @@ async function main() {
       nativeOracle,
       nativeBench,
       fflate: { path: fflatePath, bytes: fflateIdentity.bytes, sha256: fflateIdentity.sha256 },
+      firNative: firNative === null ? null : {
+        directory: firNative.directory,
+        schemaVersion: firNative.build.schemaVersion,
+        firCommit: firNative.build.sources.fir.commit,
+        leanZipCommit: firNative.build.sources.leanZip.commit,
+        layoutVersion: firNative.build.capabilities.byteArray.layoutVersion,
+        wasm: {
+          path: join(firNative.directory, "lean-zip-stored.wasm"),
+          bytes: firNative.files.get("lean-zip-stored.wasm").byteLength,
+          sha256: firNative.wasmSha256,
+        },
+      },
     },
   };
 
@@ -352,10 +434,21 @@ async function main() {
         const bytes = virSourceFiles.get(path);
         if (bytes === undefined) throw new Error("VIR runtime asset not found");
         send(response, 200, bytes, mimeTypes.get(extname(path)) ?? "application/octet-stream");
+      } else if (request.method === "GET" && url.pathname === "/fir/lean-zip-stored-browser-adapter.mjs") {
+        if (firNative === null) throw new Error("FIR native artifact is unavailable");
+        send(response, 200, firNative.files.get("lean-zip-stored-browser-adapter.mjs"),
+          "text/javascript; charset=utf-8");
       } else if (request.method === "GET" && url.pathname === "/vendor/fflate.mjs") {
         await sendFile(response, fflatePath);
       } else if (request.method === "GET" && url.pathname === "/artifacts/vir-upstream.wasm") {
         send(response, 200, wasmBytes, "application/wasm");
+      } else if (request.method === "GET" && url.pathname === "/artifacts/fir-lean-zip-stored.wasm") {
+        if (firNative === null) throw new Error("FIR native artifact is unavailable");
+        send(response, 200, firNative.files.get("lean-zip-stored.wasm"), "application/wasm");
+      } else if (request.method === "GET" && url.pathname === "/artifacts/fir-lean-zip-stored.wasm.json") {
+        if (firNative === null) throw new Error("FIR native artifact is unavailable");
+        send(response, 200, firNative.files.get("lean-zip-stored.wasm.json"),
+          "application/json; charset=utf-8");
       } else if (request.method === "GET" && /^\/artifacts\/package-\d+\.irpkg$/.test(url.pathname)) {
         const index = Number(url.pathname.match(/\d+/)[0]);
         if (index >= packageInput.members.length) throw new Error("package artifact not found");
@@ -395,6 +488,7 @@ async function main() {
   server.listen(options.port, "127.0.0.1", () => {
     console.log(`lean-zip comparison lab: http://127.0.0.1:${options.port}/`);
     console.log(`VIR ${options.entry}; ${packageInput.members.length} package(s); Ctrl-C to stop`);
+    if (firNative !== null) console.log("FIR native mode: stored DEFLATE at level 0");
   });
 }
 

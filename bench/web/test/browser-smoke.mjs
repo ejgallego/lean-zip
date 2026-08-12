@@ -73,9 +73,28 @@ while (Date.now() < deadline) {
 }
 if (status !== "complete" && status !== "failed") throw new Error(`browser run timed out after ${timeoutMs} ms`);
 
+const diagnosticRequested = await evaluate(
+  "new URL(location.href).searchParams.get('diagnose') === '1'",
+);
+let diagnosticStatus = null;
+if (diagnosticRequested) {
+  while (Date.now() < deadline) {
+    diagnosticStatus = await evaluate("document.documentElement.dataset.diagnosticStatus || null");
+    if (diagnosticStatus === "complete" || diagnosticStatus === "failed") break;
+    await delay(250);
+  }
+  if (diagnosticStatus !== "complete" && diagnosticStatus !== "failed") {
+    throw new Error(`browser diagnostic timed out after ${timeoutMs} ms`);
+  }
+}
+
 const evidence = await evaluate(`({
   status: document.documentElement.dataset.runStatus,
+  diagnosticStatus: document.documentElement.dataset.diagnosticStatus || null,
   summary: document.querySelector('#status').textContent,
+  diagnosticSummary: document.querySelector('#diagnostic-status').textContent,
+  diagnosticMetrics: [...document.querySelectorAll('#diagnostic-metrics > div')].map((item) =>
+    [item.querySelector('dt').textContent, item.querySelector('dd').textContent]),
   isolated: crossOriginIsolated,
   rows: [...document.querySelectorAll('#backend-rows tr')].map((row) =>
     [...row.cells].map((cell) => cell.textContent.trim()))
@@ -89,4 +108,4 @@ if (screenshotPath !== null) {
   await writeFile(screenshotPath, Buffer.from(screenshot.data, "base64"));
 }
 socket.close();
-if (status !== "complete") process.exitCode = 1;
+if (status !== "complete" || diagnosticStatus === "failed") process.exitCode = 1;

@@ -1,15 +1,20 @@
 # lean-zip browser comparison lab
 
+See [`PERFORMANCE.md`](PERFORMANCE.md) for the first phase-aware VIR and FIR
+results and their artifact identities.
+
 This loopback-only page compares one raw-DEFLATE input across:
 
 - native lean-zip, used as the byte-for-byte Lean reference;
-- lean-zip interpreted by VIR's browser WebAssembly runtime;
+- lean-zip interpreted by VIR's package-scoped persistent-interpreter runtime;
+- FIR's zero-import resident-ByteArray stored compressor at Lean level 0;
 - the browser's `CompressionStream("deflate-raw")` implementation; and
 - pinned fflate JavaScript (`0.8.2`).
 
 It also reserves separate capability rows for FIR's near-term C/Emscripten
-bundle and its FIR-native WebAssembly path. A missing FIR artifact is reported
-as unavailable, not silently substituted with another implementation.
+bundle and FIR Level 1/full-dispatcher support. A missing or level-inapplicable
+artifact is reported as unavailable, not silently substituted with another
+implementation.
 
 ## Run it
 
@@ -31,6 +36,31 @@ npm run serve -- \
   --entry VirLeanZipAcceptance.compressRaw
 ```
 
+Use landed VIR `main` as the sole VIR artifact and optionally
+attach FIR's immutable stored package:
+
+```text
+npm run serve -- \
+  --vir-root /path/to/vir \
+  --package /path/to/lean-zip-acceptance.irpkg \
+  --vir-profile client-native \
+  --fir-native-package /path/to/lean-zip-stored-package
+```
+
+Use `?level=0&autorun=1` to include FIR in an automatic run. At other levels
+the FIR row remains visible but is marked level-inapplicable.
+
+The page also has deterministic exact-size inputs: repeated text, structured
+records, seeded random bytes, and zero bytes. Query parameters such as
+`?case=structured&bytes=65536&level=6&samples=3&backends=native,vir&autorun=1`
+make a cold worker run reproducible.
+
+The acceptance package also exposes production stage entries. The stage panel
+performs an explicit untimed warmup and then profiles the matcher, base
+preparation, direct level body where available, and whole compressor. Add
+`?diagnose=1` to run it automatically; combine it with `?autorun=1` to capture
+both sections in one local browser smoke.
+
 Open `http://127.0.0.1:4173/`. The server never binds to a non-loopback
 interface. `?autorun=1` selects one timing sample and starts the default case;
 the document root receives `data-run-status="complete"` or `"failed"` for a
@@ -51,8 +81,39 @@ compressors at the same time. Native timing comes from
 `zip-wasm-bench-native`, which measures repeated calls inside one Lean process
 and excludes process startup.
 
-After timing, the local server inflates every output with Node zlib. All Lean
-lanes must additionally match native lean-zip byte-for-byte. Other codecs may
+For VIR, each timed call additionally retains the runtime's diagnostic
+`marshalMs`, `executeMs`, `decodeMs`, and `hostMs` phases. Outer wall time is
+still the headline number. The call-anatomy panel and exported JSON use these
+phases to distinguish interpreter execution from the JavaScript/Wasm boundary.
+
+To collect a cold-worker matrix, start Chrome with a debugging port and run:
+
+```text
+npm run bench:vir -- --debug-port 9223 --out /tmp/lean-zip-vir-sweep.json
+```
+
+The default sweep covers three deterministic input classes, 1/16/64 KiB, and
+Lean levels 0/1/6. Every cell runs native Lean and VIR, requires exact output
+equality plus independent inflate, and rejects artifact identity changes during
+the sweep. Three excluded warmups are used by default so V8 tier-up does not
+pollute the measured median. `--cases`, `--sizes`, `--levels`, `--samples`,
+`--warmups`, and `--iterations` accept comma-separated overrides.
+
+The same driver benchmarks the currently admitted FIR-native stored slice at
+level 0 while retaining the adapter's encode/execute/decode phases:
+
+```text
+npm run bench:fir -- --debug-port 9223 --out /tmp/lean-zip-fir-stored-sweep.json
+```
+
+The first call retains the now-once-per-package construction cost of lean-zip's
+computed 32,769-entry `distCodeWordBytes` nullary table. The supported VIR
+runtime retains that table across later public calls. Production stage profiles
+run only after an explicit warmup, so cold initialization and steady execution
+remain separate measurements.
+
+After timing, the local server inflates every output with Node zlib. All active
+Lean lanes must additionally match native lean-zip byte-for-byte. Other codecs may
 legitimately produce different raw streams.
 
 The level selector is not a cross-codec quality equivalence:
@@ -76,25 +137,28 @@ server is the explicit artifact switch.
 
 ## FIR admission boundary
 
-The two disabled rows intentionally represent different deliverables:
+The two FIR rows represent different deliverables:
 
-1. **FIR C / Emscripten** needs a browser-loadable module plus a stable
-   `HEAPU8` adapter for binary-safe `ByteArray` input and output.
-2. **FIR native** needs FIR closure/admission support for captured concrete
-   `ByteArray` operations before the same worker protocol can host it.
+1. **FIR C / Emscripten** remains disabled. It needs a browser-loadable module
+   plus a stable `HEAPU8` adapter for binary-safe `ByteArray` input and output.
+2. **FIR native** is admitted for the zero-import stored compressor at level 0.
+   Level 1 and the full dispatcher remain gated on FIR's imported-source
+   final-capture repair and the additional resident operations exposed by the
+   resulting exact closure.
 
-Once either artifact exists, it should implement the worker's prepare/run
-contract and pass the same native-equality and independent-inflate gates before
-its capability flag becomes available.
+Every new FIR capability must use the same prepare/run phases and pass native
+byte equality plus independent inflate before its advertised level set expands.
 
 ## VIR portable and client-native profiles
 
 The default VIR artifact uses the seven explicit portable Lean reference
 bodies from VIR's lean-zip adapter. Client-native extern support is merged in
-VIR `main` at `5703203e9a8d755645aa3249df654ef8cadcc63d`; it consumes
+VIR `main` at `d43a947e65cec5dbda9e2393a5e74d1150ca144f`; it consumes
 [`../../lean-vir-native-externs.json`](../../lean-vir-native-externs.json) and
 compiles lean-zip's existing `c/bytearray_wide_ffi.c` provider into the shared
-runtime. Both profiles use the same browser worker and correctness contract;
+runtime. This revision includes the package-lifetime interpreter cache from
+PR #131, so warm calls retain computed Lean constants without a separate fix
+worktree. Both profiles use the same browser worker and correctness contract;
 artifact hashes in the report identify which one was actually served. The
 portable profile remains the compatibility baseline, while client-native is
 the supported optimized profile.

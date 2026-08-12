@@ -1,6 +1,49 @@
 export const REPORT_FORMAT = "lean-zip-web-comparison-report";
 export const REPORT_VERSION = 1;
 
+export const BENCHMARK_INPUTS = Object.freeze([
+  { id: "repeated", name: "Repeated text" },
+  { id: "structured", name: "Structured records" },
+  { id: "random", name: "Seeded random" },
+  { id: "zeros", name: "Zero bytes" },
+]);
+
+export function makeBenchmarkInput(kind, size, seed = 0x6c65616e) {
+  if (!BENCHMARK_INPUTS.some((candidate) => candidate.id === kind)) {
+    throw new TypeError(`unknown benchmark input: ${kind}`);
+  }
+  if (!Number.isInteger(size) || size < 0 || size > 4 * 1024 * 1024) {
+    throw new TypeError("benchmark input size must be an integer in 0..4194304");
+  }
+  const output = new Uint8Array(size);
+  if (kind === "zeros") return output;
+  if (kind === "random") {
+    let state = seed >>> 0;
+    for (let index = 0; index < size; index += 1) {
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      output[index] = state >>> 24;
+    }
+    return output;
+  }
+  const encoder = new TextEncoder();
+  const pattern = encoder.encode(kind === "repeated"
+    ? "abracadabra abracadabra — lean-zip raw deflate — "
+    : '{"id":000000,"kind":"lean-zip","enabled":true,"tags":["wasm","deflate"]}\n');
+  for (let offset = 0; offset < size; offset += pattern.byteLength) {
+    output.set(pattern.subarray(0, Math.min(pattern.byteLength, size - offset)), offset);
+    if (kind === "structured") {
+      let record = Math.floor(offset / pattern.byteLength);
+      for (let digit = 0; digit < 6 && offset + 11 - digit < size; digit += 1) {
+        output[offset + 11 - digit] = 48 + record % 10;
+        record = Math.floor(record / 10);
+      }
+    }
+  }
+  return output;
+}
+
 export const BACKENDS = Object.freeze([
   {
     id: "native",
@@ -11,7 +54,7 @@ export const BACKENDS = Object.freeze([
   },
   {
     id: "vir",
-    name: "Lean via VIR",
+    name: "VIR",
     family: "lean-zip",
     execution: "browser WebAssembly interpreter",
     setting: (level) => `lean-zip level ${level}`,
@@ -39,10 +82,12 @@ export const BACKENDS = Object.freeze([
   },
   {
     id: "fir-native",
-    name: "FIR native",
+    name: "FIR native · stored",
     family: "lean-zip",
     execution: "browser WebAssembly",
-    setting: (level) => `lean-zip level ${level}`,
+    setting: (level) => level === 0
+      ? "stored DEFLATE · Lean level 0"
+      : "stored DEFLATE · level 0 only",
   },
 ]);
 
@@ -110,7 +155,7 @@ export function bytesEqual(left, right) {
   return true;
 }
 
-export function makeReport({ info, source, settings, results, userAgent }) {
+export function makeReport({ info, source, settings, results, diagnostics = null, userAgent }) {
   return {
     format: REPORT_FORMAT,
     version: REPORT_VERSION,
@@ -121,6 +166,7 @@ export function makeReport({ info, source, settings, results, userAgent }) {
     settings,
     artifacts: info.artifacts,
     repositories: info.repositories,
+    diagnostics,
     results: results.map(({ output, ...result }) => ({
       ...result,
       outputBytes: output?.byteLength ?? result.outputBytes ?? null,
@@ -130,6 +176,8 @@ export function makeReport({ info, source, settings, results, userAgent }) {
       "Codec level numbers are backend-specific and do not imply equal compression effort.",
       "Correctness validation and report rendering are outside timed regions.",
       "Native Lean samples exclude process startup; browser samples run in dedicated workers.",
+      "Focused VIR diagnostics do not replace or modify the production compressor lane.",
+      "The FIR-native stored artifact participates only at Lean level 0; Level 1 and the full dispatcher remain gated.",
     ],
   };
 }

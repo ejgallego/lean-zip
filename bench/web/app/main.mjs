@@ -1,22 +1,34 @@
 import {
   BACKENDS,
+  BENCHMARK_INPUTS,
   base64ToBytes,
   bytesEqual,
   bytesToBase64,
   makeReport,
+  makeBenchmarkInput,
   normalizeRunSettings,
 } from "./protocol.mjs";
 
 const elements = Object.fromEntries([
-  "input", "file", "source-label", "input-size", "level", "samples", "iterations", "run",
+  "input", "file", "source-label", "input-size", "preset", "preset-size", "level", "samples", "warmups", "iterations", "run",
   "status", "backend-rows", "chart", "identity", "export", "isolation",
+  "vir-phase-status", "vir-phase-metrics",
+  "diagnostic-run", "diagnostic-status", "diagnostic-metrics",
 ].map((id) => [id, document.getElementById(id)]));
 
 const rowCells = new Map();
 const clients = new Map();
 let info = null;
 let selectedFile = null;
+let generatedInput = null;
+let generatedName = null;
 let latestRun = null;
+let latestDiagnostic = null;
+const pageQuery = new URL(location.href).searchParams;
+const requestedBackends = pageQuery.get("backends");
+const enabledBackendIds = requestedBackends === null
+  ? new Set(BACKENDS.map((backend) => backend.id))
+  : new Set(requestedBackends.split(",").filter((id) => BACKENDS.some((backend) => backend.id === id)));
 
 const colors = new Map([
   ["native", "#c7f36b"],
@@ -60,6 +72,22 @@ function backendCapability(id) {
     available: false,
     reason: "backend metadata unavailable",
   };
+}
+
+function capabilityForLevel(id, level) {
+  const capability = backendCapability(id);
+  if (!enabledBackendIds.has(id)) {
+    return { ...capability, available: false, reason: "excluded from this run" };
+  }
+  if (!capability.available) return capability;
+  if (Array.isArray(capability.levels) && !capability.levels.includes(level)) {
+    return {
+      ...capability,
+      available: false,
+      reason: `level ${level} not supported · select level ${capability.levels.join(" or ")}`,
+    };
+  }
+  return capability;
 }
 
 function createRows() {
@@ -131,6 +159,42 @@ function renderResult(result, inputBytes) {
   setState(result.id, detail, result.valid && result.exactNative !== false ? "good" : "bad");
 }
 
+function renderVirPhases(result) {
+  const setup = result.preparation?.preparePhases;
+  const first = result.firstCallPhases;
+  const steady = result.phaseMedians;
+  const phase = (value, name) => value === null || value === undefined
+    ? "—"
+    : formatMs(value[name]);
+  const values = [
+    ["Setup total", setup === null || setup === undefined ? "—" : formatMs(setup.totalMs)],
+    ["Artifact acquisition", phase(setup, "acquireMs")],
+    ["Wasm compilation", phase(setup, "compileMs")],
+    ["Wasm instantiation", phase(setup, "instantiateMs")],
+    ["IR package load", phase(setup, "packageLoadMs")],
+    ["Cold call wall", formatMs(result.firstCallMs)],
+    ["Cold interpreter", phase(first, "executeMs")],
+    ["Cold marshal / decode", first === null ? "—" : `${formatMs(first.marshalMs)} / ${formatMs(first.decodeMs)}`],
+    ["Steady wall", formatMs(result.medianMs)],
+    ["Steady interpreter", phase(steady, "executeMs")],
+    ["Steady marshal / decode", steady === null ? "—" : `${formatMs(steady.marshalMs)} / ${formatMs(steady.decodeMs)}`],
+    ["Steady host-native", phase(steady, "hostMs")],
+    ["Wasm pages", `${result.memoryPagesBefore} → ${result.memoryPagesAfterFirst} → ${result.memoryPagesAfter}`],
+  ];
+  elements["vir-phase-metrics"].replaceChildren();
+  for (const [term, description] of values) {
+    const item = document.createElement("div");
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = description;
+    item.append(dt, dd);
+    elements["vir-phase-metrics"].append(item);
+  }
+  elements["vir-phase-status"].textContent =
+    "Runtime timings are diagnostic; wall samples remain the headline benchmark.";
+}
+
 async function responseJson(response) {
   const value = await response.json();
   if (!response.ok) throw new Error(value.error ?? `HTTP ${response.status}`);
@@ -152,13 +216,32 @@ async function sha256(bytes) {
 
 async function sourceBytes() {
   if (selectedFile !== null) return new Uint8Array(await selectedFile.arrayBuffer());
+  if (generatedInput !== null) return generatedInput;
   return new TextEncoder().encode(elements.input.value);
+}
+
+function applyPreset() {
+  const kind = elements.preset.value;
+  if (kind === "custom") {
+    generatedInput = null;
+    generatedName = null;
+    elements["source-label"].textContent = "text input";
+  } else {
+    const size = Number(elements["preset-size"].value);
+    generatedInput = makeBenchmarkInput(kind, size);
+    generatedName = `${kind}-${size}`;
+    selectedFile = null;
+    elements.file.value = "";
+    elements["source-label"].textContent = `${BENCHMARK_INPUTS.find((item) => item.id === kind).name} · generated`;
+  }
+  updateInputSize();
+  clearDiagnostic();
 }
 
 function currentSettings() {
   return normalizeRunSettings({
     level: Number(elements.level.value),
-    warmups: 0,
+    warmups: Number(elements.warmups.value),
     iterations: Number(elements.iterations.value),
     samples: Number(elements.samples.value),
   });
@@ -173,7 +256,11 @@ async function prepareBackend(id) {
   setState(id, "preparing", "running");
   const client = new WorkerClient(id);
   clients.set(id, client);
-  const configuration = id === "vir" ? { ...info.runtime, entry: info.entry } : {};
+  const configuration = id === "vir"
+    ? { ...info.runtime, entry: info.entry }
+    : id === "fir-native"
+        ? info.firNative
+        : {};
   try {
     const preparation = await client.request("prepare", configuration);
     client.preparation = preparation;
@@ -202,8 +289,15 @@ function renderIdentity() {
     ["VIR runtime", `${info.artifacts.virRuntime.files} files · ${info.artifacts.virRuntime.sha256.slice(0, 16)}…`],
     ["VIR Wasm", `${formatBytes(info.artifacts.virWasm.bytes)} · ${info.artifacts.virWasm.sha256.slice(0, 16)}…`],
     ["IR package", `${info.artifacts.virPackageInput.members.length} member(s) · ${info.artifacts.virPackageInput.sha256.slice(0, 16)}…`],
+    ["VIR stage profiles", "production acceptance package"],
     ["fflate", `${formatBytes(info.artifacts.fflate.bytes)} · ${info.artifacts.fflate.sha256.slice(0, 16)}…`],
   ];
+  if (info.artifacts.firNative !== null) {
+    values.push(
+      ["FIR native", `${info.artifacts.firNative.firCommit.slice(0, 12)} · stored level 0`],
+      ["FIR Wasm", `${formatBytes(info.artifacts.firNative.wasm.bytes)} · ${info.artifacts.firNative.wasm.sha256.slice(0, 16)}…`],
+    );
+  }
   elements.identity.replaceChildren();
   for (const [term, description] of values) {
     const dt = document.createElement("dt");
@@ -211,6 +305,84 @@ function renderIdentity() {
     const dd = document.createElement("dd");
     dd.textContent = description;
     elements.identity.append(dt, dd);
+  }
+}
+
+function clearDiagnostic() {
+  latestDiagnostic = null;
+  elements["diagnostic-metrics"].replaceChildren();
+  const available = info?.runtime.diagnostic !== null && Number(elements.level.value) >= 1;
+  elements["diagnostic-run"].disabled = !available;
+  elements["diagnostic-status"].textContent = available
+    ? "Ready. Stages run after an explicit untimed warmup in the production VIR runtime."
+    : "Stage profiling requires Lean level 1 or higher.";
+}
+
+function renderDiagnostic(value) {
+  const share = (stage) => value.whole.executeMs <= 0
+    ? null
+    : 100 * stage.executeMs / value.whole.executeMs;
+  const stage = (timing) => timing === null
+    ? "not exposed at this level"
+    : `${formatMs(timing.executeMs)} · ${share(timing).toFixed(1)}% of whole`;
+  const remainder = value.whole.executeMs - value.matcher.executeMs - value.base.executeMs;
+  const values = [
+    ["Packed stream", `${value.tokens} tokens · ${formatBytes(value.packedBytes)}`],
+    ["Whole compressor", formatMs(value.whole.executeMs)],
+    ["Matcher", stage(value.matcher)],
+    ["Base preparation", stage(value.base)],
+    ["Direct level body", stage(value.direct)],
+    ["Direct / whole bytes", value.directMatchesWhole === null
+      ? "not exposed at this level"
+      : value.directMatchesWhole ? "equal ✓" : "mismatch"],
+    ["Optimal candidate", stage(value.optimal)],
+    ["Non-additive remainder", formatMs(Math.max(0, remainder))],
+    ["Warmup / whole bytes", value.warmupMatchesWhole ? "equal ✓" : "mismatch"],
+    ["Wasm pages", `${value.pagesBefore} → ${value.pagesAfter}`],
+  ];
+  elements["diagnostic-metrics"].replaceChildren();
+  for (const [term, description] of values) {
+    const item = document.createElement("div");
+    const dt = document.createElement("dt");
+    dt.textContent = term;
+    const dd = document.createElement("dd");
+    dd.textContent = description;
+    item.append(dt, dd);
+    elements["diagnostic-metrics"].append(item);
+  }
+}
+
+async function runVirDiagnostic() {
+  elements["diagnostic-run"].disabled = true;
+  elements.run.disabled = true;
+  elements["diagnostic-status"].textContent = "Warming the package, then timing production stages in isolated VIR calls…";
+  document.documentElement.dataset.diagnosticStatus = "running";
+  try {
+    if (info.runtime.diagnostic === null) throw new Error("VIR production stage exports are unavailable");
+    const input = await sourceBytes();
+    if (input.byteLength > info.maxInputBytes) throw new Error(`input exceeds ${formatBytes(info.maxInputBytes)}`);
+    const level = Number(elements.level.value);
+    const client = await prepareBackend("vir");
+    const copy = input.slice();
+    const value = await client.request("diagnose", { input: copy.buffer, level }, [copy.buffer]);
+    latestDiagnostic = {
+      kind: "vir-production-stage-profile",
+      level,
+      ...value,
+    };
+    renderDiagnostic(latestDiagnostic);
+    if (latestRun !== null) latestRun.diagnostics = latestDiagnostic;
+    const equal = value.warmupMatchesWhole && value.directMatchesWhole !== false;
+    elements["diagnostic-status"].textContent = equal
+      ? "Production stage profile complete. Isolated stages are attribution evidence, not additive wall time."
+      : "A production stage output differed from the whole call; discard this profile.";
+    document.documentElement.dataset.diagnosticStatus = equal ? "complete" : "failed";
+  } catch (error) {
+    elements["diagnostic-status"].textContent = error.message;
+    document.documentElement.dataset.diagnosticStatus = "failed";
+  } finally {
+    elements["diagnostic-run"].disabled = info.runtime.diagnostic === null || Number(elements.level.value) < 1;
+    elements.run.disabled = false;
   }
 }
 
@@ -280,6 +452,9 @@ async function runComparison() {
   elements.run.disabled = true;
   elements.export.disabled = true;
   latestRun = null;
+  globalThis.__leanZipLatestReport = null;
+  elements["vir-phase-metrics"].replaceChildren();
+  elements["vir-phase-status"].textContent = "Waiting for the VIR lane…";
   document.documentElement.dataset.runStatus = "running";
   const results = [];
   let failed = false;
@@ -288,44 +463,47 @@ async function runComparison() {
     if (input.byteLength > info.maxInputBytes) throw new Error(`input exceeds ${formatBytes(info.maxInputBytes)}`);
     const settings = currentSettings();
     const source = {
-      kind: selectedFile === null ? "utf8" : "file",
-      name: selectedFile?.name ?? "textarea",
+      kind: selectedFile !== null ? "file" : generatedInput !== null ? "generated" : "utf8",
+      name: selectedFile?.name ?? generatedName ?? "textarea",
       bytes: input.byteLength,
       sha256: await sha256(input),
     };
     elements.status.textContent = "Native Lean is establishing the reference stream…";
     for (const backend of BACKENDS) {
-      const capability = backendCapability(backend.id);
+      const capability = capabilityForLevel(backend.id, settings.level);
       if (!capability.available) setState(backend.id, capability.reason, "pending");
       else setState(backend.id, "queued", "pending");
     }
 
     let nativeOutput = null;
-    try {
-      setState("native", "running", "running");
-      const nativeValue = await api("/api/native/run", { input: bytesToBase64(input), ...settings });
-      nativeOutput = base64ToBytes(nativeValue.output);
-      const validation = await validateResult(input, nativeOutput);
-      const native = { ...nativeValue, output: nativeOutput, valid: validation.valid, exactNative: true };
-      results.push(native);
-      renderResult(native, input.byteLength);
-    } catch (error) {
-      failed = true;
-      setState("native", error.message, "bad");
+    if (capabilityForLevel("native", settings.level).available) {
+      try {
+        setState("native", "running", "running");
+        const nativeValue = await api("/api/native/run", { input: bytesToBase64(input), ...settings });
+        nativeOutput = base64ToBytes(nativeValue.output);
+        const validation = await validateResult(input, nativeOutput);
+        const native = { ...nativeValue, output: nativeOutput, valid: validation.valid, exactNative: true };
+        results.push(native);
+        renderResult(native, input.byteLength);
+      } catch (error) {
+        failed = true;
+        setState("native", error.message, "bad");
+      }
     }
 
-    for (const id of ["vir", "compression-stream", "fflate"]) {
-      if (!backendCapability(id).available) continue;
+    for (const id of ["vir", "fir-native", "compression-stream", "fflate"]) {
+      if (!capabilityForLevel(id, settings.level).available) continue;
       elements.status.textContent = `${BACKENDS.find((backend) => backend.id === id).name} is running in its worker…`;
       try {
         const value = await runWorkerBackend(id, input, settings);
         const validation = await validateResult(input, value.output);
         const exactNative = value.family === "lean-zip"
-          ? nativeOutput !== null && bytesEqual(value.output, nativeOutput)
+          ? nativeOutput === null ? null : bytesEqual(value.output, nativeOutput)
           : null;
         const result = { ...value, valid: validation.valid, exactNative, sha256: validation.sha256 };
         results.push(result);
         renderResult(result, input.byteLength);
+        if (id === "vir") renderVirPhases(result);
         if (!validation.valid || exactNative === false) failed = true;
       } catch (error) {
         failed = true;
@@ -334,7 +512,15 @@ async function runComparison() {
     }
 
     renderChart(results, input.byteLength);
-    latestRun = makeReport({ info, source, settings, results, userAgent: navigator.userAgent });
+    latestRun = makeReport({
+      info,
+      source,
+      settings,
+      results,
+      diagnostics: latestDiagnostic,
+      userAgent: navigator.userAgent,
+    });
+    globalThis.__leanZipLatestReport = latestRun;
     elements.export.disabled = false;
     elements.status.textContent = failed
       ? "Run completed with unavailable or failed lanes; inspect the verification column."
@@ -372,30 +558,78 @@ async function initialize() {
   elements.isolation.classList.toggle("good", crossOriginIsolated);
   elements.input.addEventListener("input", () => {
     selectedFile = null;
+    generatedInput = null;
+    generatedName = null;
+    elements.preset.value = "custom";
     elements.file.value = "";
     elements["source-label"].textContent = "text input";
     updateInputSize();
+    clearDiagnostic();
   });
   elements.file.addEventListener("change", () => {
     selectedFile = elements.file.files[0] ?? null;
+    generatedInput = null;
+    generatedName = null;
+    elements.preset.value = "custom";
     elements["source-label"].textContent = selectedFile?.name ?? "text input";
     updateInputSize();
+    clearDiagnostic();
+  });
+  elements.preset.addEventListener("change", applyPreset);
+  elements["preset-size"].addEventListener("change", () => {
+    if (elements.preset.value !== "custom") applyPreset();
+  });
+  elements.level.addEventListener("change", () => {
+    clearDiagnostic();
+    if (info !== null) {
+      const level = Number(elements.level.value);
+      for (const backend of BACKENDS) {
+        const capability = capabilityForLevel(backend.id, level);
+        setState(backend.id, capability.available ? "ready" : capability.reason, "pending");
+      }
+    }
   });
   elements.run.addEventListener("click", runComparison);
+  elements["diagnostic-run"].addEventListener("click", runVirDiagnostic);
   elements.export.addEventListener("click", exportReport);
   updateInputSize();
   try {
     info = await responseJson(await fetch("/api/info", { cache: "no-store" }));
     renderIdentity();
+    clearDiagnostic();
+    const query = pageQuery;
+    const requestedLevel = query.get("level");
+    if (requestedLevel !== null && /^(?:[0-9]|10)$/.test(requestedLevel)) {
+      elements.level.value = requestedLevel;
+    }
+    const requestedInput = query.get("case");
+    const requestedBytes = query.get("bytes");
+    if (BENCHMARK_INPUTS.some((item) => item.id === requestedInput) &&
+        ["1024", "16384", "65536", "262144", "1048576"].includes(requestedBytes)) {
+      elements.preset.value = requestedInput;
+      elements["preset-size"].value = requestedBytes;
+      applyPreset();
+    }
+    if (["1", "3", "5", "9"].includes(query.get("samples"))) {
+      elements.samples.value = query.get("samples");
+    }
+    if (["0", "1", "3", "5", "10"].includes(query.get("warmups"))) {
+      elements.warmups.value = query.get("warmups");
+    }
+    if (["1", "3", "5", "10", "20"].includes(query.get("iterations"))) {
+      elements.iterations.value = query.get("iterations");
+    }
+    clearDiagnostic();
     for (const backend of BACKENDS) {
-      const capability = backendCapability(backend.id);
+      const capability = capabilityForLevel(backend.id, Number(elements.level.value));
       setState(backend.id, capability.available ? "ready" : capability.reason, "pending");
     }
     elements.status.textContent = "Artifacts identified. Ready to run sequentially.";
-    if (new URL(location.href).searchParams.get("autorun") === "1") {
-      elements.samples.value = "1";
+    if (query.get("autorun") === "1") {
+      if (!query.has("samples")) elements.samples.value = "1";
       await runComparison();
     }
+    if (query.get("diagnose") === "1") await runVirDiagnostic();
   } catch (error) {
     elements.status.textContent = error.message;
     document.documentElement.dataset.runStatus = "failed";
