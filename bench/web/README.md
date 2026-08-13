@@ -246,7 +246,10 @@ and 65,536-byte reservation, a zero-import complete module, and the
 package, raw v2 does not eagerly call a persistent initializer: compiler lazy
 caches are populated at their original use sites, publication advances a
 monotonic resident rewind floor, and a repeated warm call must rewind flat to
-the resulting checkpoint.
+the resulting checkpoint. The comparison UI reports this workload-dependent
+cold cache population as part of the first call (including persistent byte
+growth), never as setup; steady samples run only after that separate cold call
+and the configured warmups.
 
 Every new FIR capability must first execute successfully in a real Wasm engine,
 then use the same prepare/run phases and pass native byte equality plus

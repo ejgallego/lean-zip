@@ -170,6 +170,9 @@ function renderRuntimePhases(result) {
   const setup = result.preparation?.preparePhases;
   const first = result.firstCallPhases;
   const steady = result.phaseMedians;
+  const lazyCachePriming = result.profile === "resident-raw-v2";
+  const coldArena = result.firstCallDetails?.arena;
+  const steadyArena = result.sampleDetails?.at(-1)?.arena;
   const phase = (value, name) => value === null || value === undefined
     ? "—"
     : formatMs(value[name]);
@@ -181,13 +184,23 @@ function renderRuntimePhases(result) {
     ["Persistent initialization", phase(setup, "initializeMs")],
     ["Initializer idempotence check", phase(setup, "idempotenceMs")],
     ["IR package load", phase(setup, "packageLoadMs")],
-    ["Cold call wall", formatMs(result.firstCallMs)],
-    ["Cold interpreter", phase(first, "executeMs")],
+    [lazyCachePriming ? "Cold call + lazy-cache priming" : "Cold call wall",
+      formatMs(result.firstCallMs)],
+    [lazyCachePriming ? "Cold execute (includes priming)" : "Cold interpreter",
+      phase(first, "executeMs")],
     ["Cold marshal / decode", first === null ? "—" : `${formatMs(first.marshalMs)} / ${formatMs(first.decodeMs)}`],
+    ...(lazyCachePriming ? [
+      ["Cold persistent cache growth",
+        coldArena === undefined ? "—" : formatBytes(coldArena.persistentGrowth)],
+    ] : []),
     ["Steady wall", formatMs(result.medianMs)],
     ["Steady interpreter", phase(steady, "executeMs")],
     ["Steady marshal / decode", steady === null ? "—" : `${formatMs(steady.marshalMs)} / ${formatMs(steady.decodeMs)}`],
     ["Steady host-native", phase(steady, "hostMs")],
+    ...(lazyCachePriming ? [
+      ["Steady persistent cache growth",
+        steadyArena === undefined ? "—" : formatBytes(steadyArena.persistentGrowth)],
+    ] : []),
     ["Wasm pages", `${result.memoryPagesBefore} → ${result.memoryPagesAfterFirst} → ${result.memoryPagesAfter}`],
   ];
   elements["vir-phase-metrics"].replaceChildren();
@@ -200,8 +213,9 @@ function renderRuntimePhases(result) {
     item.append(dt, dd);
     elements["vir-phase-metrics"].append(item);
   }
-  elements["vir-phase-status"].textContent =
-    `${result.name} runtime timings are diagnostic; wall samples remain the headline benchmark.`;
+  elements["vir-phase-status"].textContent = lazyCachePriming
+    ? `${result.name} populates Lean lazy caches on its first workload call; the cold cost stays visible, while the headline steady median uses later flat-rewind calls.`
+    : `${result.name} runtime timings are diagnostic; wall samples remain the headline benchmark.`;
 }
 
 async function responseJson(response) {
