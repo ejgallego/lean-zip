@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 430" role="img" aria-labelledby="title desc">
+  <title id="title">FIR stored-mode scratch growth frontier</title>
+  <desc id="desc">A line chart plots scratch growth divided by input size. The ratio stays close to four through 64 KiB, then rises to 8.51 times at 256 KiB and 20.89 times at one MiB as stored block count increases.</desc>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #242721; }
+    .title { font-size: 22px; font-weight: 700; }
+    .subtitle, .axis, .note { font-size: 13px; fill: #5c6258; }
+    .value { font-size: 14px; font-weight: 700; fill: #286b65; }
+  </style>
+  <rect x="0.5" y="0.5" width="919" height="429" rx="12" fill="#fbfbf8" stroke="#d9ddd4"/>
+  <text class="title" x="36" y="43">FIR stored scratch frontier</text>
+  <text class="subtitle" x="36" y="66">Peak scratch growth / input size · fresh worker per row</text>
+
+  <line x1="120" y1="330" x2="850" y2="330" stroke="#c9cec5"/>
+  <line x1="120" y1="280" x2="850" y2="280" stroke="#d9ddd4" stroke-dasharray="5 5"/>
+  <line x1="120" y1="230" x2="850" y2="230" stroke="#e2e5df"/>
+  <line x1="120" y1="130" x2="850" y2="130" stroke="#e2e5df"/>
+  <line x1="120" y1="80" x2="850" y2="80" stroke="#e2e5df"/>
+  <line x1="120" y1="80" x2="120" y2="330" stroke="#c9cec5"/>
+  <text class="axis" x="103" y="334" text-anchor="end">0×</text>
+  <text class="axis" x="103" y="284" text-anchor="end">4×</text>
+  <text class="axis" x="103" y="234" text-anchor="end">8×</text>
+  <text class="axis" x="103" y="134" text-anchor="end">16×</text>
+  <text class="axis" x="103" y="84" text-anchor="end">20×</text>
+  <text class="axis" x="836" y="274" text-anchor="end">single-block baseline ≈ 4×</text>
+
+  <polyline points="140,273.5 432,279.6 578,279.8 724,223.6 850,68.9" fill="none" stroke="#3e8f87" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <g fill="#fbfbf8" stroke="#3e8f87" stroke-width="4">
+    <circle cx="140" cy="273.5" r="7"/>
+    <circle cx="432" cy="279.6" r="7"/>
+    <circle cx="578" cy="279.8" r="7"/>
+    <circle cx="724" cy="223.6" r="7"/>
+    <circle cx="850" cy="68.9" r="7"/>
+  </g>
+  <text class="value" x="140" y="253" text-anchor="middle">4.52×</text>
+  <text class="value" x="432" y="259" text-anchor="middle">4.03×</text>
+  <text class="value" x="578" y="259" text-anchor="middle">4.02×</text>
+  <text class="value" x="724" y="203" text-anchor="middle">8.51×</text>
+  <text class="value" x="850" y="50" text-anchor="end">20.89×</text>
+
+  <text class="axis" x="140" y="354" text-anchor="middle">1 KiB</text>
+  <text class="axis" x="432" y="354" text-anchor="middle">16 KiB</text>
+  <text class="axis" x="578" y="354" text-anchor="middle">64 KiB</text>
+  <text class="axis" x="724" y="354" text-anchor="middle">256 KiB</text>
+  <text class="axis" x="850" y="354" text-anchor="middle">1 MiB</text>
+  <text class="axis" x="140" y="376" text-anchor="middle">1 block</text>
+  <text class="axis" x="432" y="376" text-anchor="middle">1 block</text>
+  <text class="axis" x="578" y="376" text-anchor="middle">2 blocks</text>
+  <text class="axis" x="724" y="376" text-anchor="middle">5 blocks</text>
+  <text class="axis" x="850" y="376" text-anchor="middle">17 blocks</text>
+
+  <line x1="36" y1="394" x2="884" y2="394" stroke="#d9ddd4"/>
+  <text class="note" x="36" y="417">The jump follows recursive suffix accumulation across stored blocks; the arena rewinds after every call.</text>
+</svg>

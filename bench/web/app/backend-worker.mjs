@@ -127,10 +127,32 @@ async function prepareFflate() {
   };
 }
 
+function requireFirResult(result, sourceName) {
+  if (result === null || typeof result !== "object") {
+    throw new Error(`${sourceName} adapter returned a non-object result`);
+  }
+  const bytes = result.bytes instanceof Uint8Array
+    ? result.bytes
+    : result.bytes instanceof ArrayBuffer
+      ? new Uint8Array(result.bytes)
+      : null;
+  if (bytes === null) throw new Error(`${sourceName} adapter did not return bytes`);
+  const timings = result.timings;
+  for (const name of ["encodeMs", "executeMs", "decodeMs", "totalMs"]) {
+    if (!Number.isFinite(timings?.[name]) || timings[name] < 0) {
+      throw new Error(`${sourceName} adapter returned an invalid ${name}`);
+    }
+  }
+  if (!Number.isFinite(result.memory?.pages) || result.memory.pages < 0) {
+    throw new Error(`${sourceName} adapter returned invalid memory telemetry`);
+  }
+  return { ...result, bytes };
+}
+
 async function prepareFirNative(config) {
   const prepareStarted = performance.now();
   let started = prepareStarted;
-  const [{ createLeanZipStoredAdapter }, wasmResponse, descriptorResponse] = await Promise.all([
+  const [adapterModule, wasmResponse, descriptorResponse] = await Promise.all([
     import(config.adapterUrl),
     fetch(config.wasmUrl, { cache: "no-store" }),
     fetch(config.descriptorUrl, { cache: "no-store" }),
@@ -144,14 +166,51 @@ async function prepareFirNative(config) {
   const acquireMs = performance.now() - started;
   started = performance.now();
   const module = await WebAssembly.compile(wasmBytes);
+  if (WebAssembly.Module.imports(module).length !== 0) {
+    throw new Error(`${config.sourceName} module is not zero-import`);
+  }
   const compileMs = performance.now() - started;
   started = performance.now();
-  const adapter = await createLeanZipStoredAdapter({ module, descriptor });
-  const instantiateMs = performance.now() - started;
+  const createAdapter = adapterModule[config.factoryExport];
+  if (typeof createAdapter !== "function") {
+    throw new Error(`FIR adapter does not export ${config.factoryExport}`);
+  }
+  const adapter = await createAdapter({ module, descriptor });
+  if (!(adapter?.memory instanceof WebAssembly.Memory) ||
+      typeof adapter[config.operation] !== "function") {
+    throw new Error(`FIR adapter does not implement ${config.operation}`);
+  }
+  const adapterPrepareMs = performance.now() - started;
+  const initialization = adapter.initialization ?? null;
+  if (config.persistentInitializer !== null) {
+    if (initialization?.entry !== config.persistentInitializer ||
+        !Number.isFinite(initialization.initializeMs) ||
+        !Number.isFinite(initialization.idempotenceMs) ||
+        initialization.checkpoint < initialization.initialFrontier) {
+      throw new Error(`${config.sourceName} adapter did not initialize persistent caches`);
+    }
+  }
+  const reservedMemoryBytes =
+    config.completeRuntime?.externalRuntime?.reservedMemoryBytes;
+  if (reservedMemoryBytes !== undefined &&
+      (initialization?.reservedFrontier !== reservedMemoryBytes ||
+        initialization.initialFrontier !== reservedMemoryBytes)) {
+    throw new Error(`${config.sourceName} adapter did not reserve its external runtime memory`);
+  }
+  const initializeMs = initialization?.initializeMs ?? 0;
+  const idempotenceMs = initialization?.idempotenceMs ?? 0;
+  const instantiateMs = Math.max(0,
+    adapterPrepareMs - initializeMs - idempotenceMs);
   let memoryPages = adapter.memory.buffer.byteLength / 65536;
   const call = (input, level) => {
-    if (level !== 0) throw new Error("FIR native stored supports Lean level 0 only");
-    const result = adapter.compressStored(input);
+    if (!config.expectedLevels.includes(level)) {
+      throw new Error(`${config.sourceName} does not support Lean level ${level}`);
+    }
+    const operationArguments = config.levelArgument
+      ? [input, level]
+      : [input];
+    const result = requireFirResult(
+      adapter[config.operation](...operationArguments), config.sourceName);
     memoryPages = result.memory.pages;
     return result;
   };
@@ -177,6 +236,8 @@ async function prepareFirNative(config) {
       acquireMs,
       compileMs,
       instantiateMs,
+      initializeMs,
+      idempotenceMs,
       packageLoadMs: 0,
       totalMs: performance.now() - prepareStarted,
     },
@@ -187,7 +248,9 @@ async function prepareFirNative(config) {
 async function prepare(config) {
   const started = performance.now();
   if (backendId === "vir") prepared = await prepareVir(config);
-  else if (backendId === "fir-native") prepared = await prepareFirNative(config);
+  else if (["fir-native", "fir-level1", "fir-raw"].includes(backendId)) {
+    prepared = await prepareFirNative(config);
+  }
   else if (backendId === "compression-stream") prepared = await prepareCompressionStream();
   else if (backendId === "fflate") prepared = await prepareFflate();
   else throw new Error(`${backendId} is not a browser-worker backend`);

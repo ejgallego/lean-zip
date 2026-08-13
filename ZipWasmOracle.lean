@@ -1,4 +1,5 @@
 import Zip.Wasm.Entry
+import Zip.Wasm.CacheProbe
 
 /-!
 # `zip-wasm-oracle`
@@ -12,6 +13,7 @@ Usage:
 ```text
 zip-wasm-oracle stored <input> <output>
 zip-wasm-oracle level1 <input> <output>
+zip-wasm-oracle cache-probe <input> <output>
 zip-wasm-oracle raw <level> <input> <output>
 ```
 -/
@@ -19,6 +21,7 @@ zip-wasm-oracle raw <level> <input> <output>
 private def usage : String :=
   "usage: zip-wasm-oracle stored <input> <output>\n" ++
   "       zip-wasm-oracle level1 <input> <output>\n" ++
+  "       zip-wasm-oracle cache-probe <input> <output>\n" ++
   "       zip-wasm-oracle raw <level> <input> <output>"
 
 private def parseLevel (text : String) : IO UInt8 := do
@@ -39,6 +42,8 @@ def main (args : List String) : IO Unit := do
       compressFile inputPath outputPath Zip.Wasm.compressStored
   | ["level1", inputPath, outputPath] =>
       compressFile inputPath outputPath Zip.Wasm.compressLevel1
+  | ["cache-probe", inputPath, outputPath] =>
+      compressFile inputPath outputPath Zip.Wasm.distanceCodeCacheProbe
   | ["raw", levelText, inputPath, outputPath] =>
       let level ← parseLevel levelText
       compressFile inputPath outputPath (Zip.Wasm.compressRaw · level)

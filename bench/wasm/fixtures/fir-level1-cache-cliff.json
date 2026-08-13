@@ -1,0 +1,9 @@
+{
+  "format": "lean-zip-wasm-utf8-fixture",
+  "version": 1,
+  "id": "fir-level1-cache-cliff",
+  "description": "Exact 83-byte browser sample used to attribute repeated FIR distance-code table construction.",
+  "text": "abracadabra abracadabra abracadabra — lean-zip browser comparison — abracadabra",
+  "byteLength": 83,
+  "sha256": "7454c48bf467ffb1242de50e40a8a03d6640680d39e2775318561e7f131a8ead"
+}

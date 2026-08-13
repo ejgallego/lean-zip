@@ -8,6 +8,8 @@ export const PLAN_FORMAT = "lean-zip-wasm-benchmark-plan";
 export const PLAN_VERSION = 1;
 export const NATIVE_SAMPLE_FORMAT = "lean-zip-wasm-native-samples";
 export const NATIVE_SAMPLE_VERSION = 1;
+export const UTF8_FIXTURE_FORMAT = "lean-zip-wasm-utf8-fixture";
+export const UTF8_FIXTURE_VERSION = 1;
 
 export function requirePositiveInteger(value, label) {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -53,6 +55,30 @@ function requireObject(value, label) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
+}
+
+export function validateUtf8Fixture(value, label = "UTF-8 fixture") {
+  const fixture = requireObject(value, label);
+  if (fixture.format !== UTF8_FIXTURE_FORMAT || fixture.version !== UTF8_FIXTURE_VERSION) {
+    throw new TypeError(`${label} has an unsupported format or version`);
+  }
+  if (typeof fixture.id !== "string" || fixture.id === "") {
+    throw new TypeError(`${label}.id must be a nonempty string`);
+  }
+  if (typeof fixture.text !== "string") {
+    throw new TypeError(`${label}.text must be a string`);
+  }
+  const bytes = new TextEncoder().encode(fixture.text);
+  if (!Number.isSafeInteger(fixture.byteLength) || fixture.byteLength !== bytes.byteLength) {
+    throw new TypeError(
+      `${label}.byteLength mismatch: expected ${fixture.byteLength}, encoded ${bytes.byteLength}`,
+    );
+  }
+  const digest = sha256(bytes);
+  if (fixture.sha256 !== digest) {
+    throw new TypeError(`${label}.sha256 mismatch: expected ${fixture.sha256}, encoded ${digest}`);
+  }
+  return { fixture, bytes };
 }
 
 function validateTiming(value, label, inherited = {}) {

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 310" role="img" aria-labelledby="title desc">
+  <title id="title">Stored-mode browser throughput</title>
+  <desc id="desc">Horizontal bars show 170 MiB per second for the specialized FIR stored module and 748 MiB per second for the general VIR resident runtime on one MiB inputs.</desc>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #242721; }
+    .title { font-size: 22px; font-weight: 700; }
+    .subtitle, .tick, .note { font-size: 13px; fill: #5c6258; }
+    .label { font-size: 15px; font-weight: 600; }
+    .value { font-size: 15px; font-weight: 700; }
+  </style>
+  <rect x="0.5" y="0.5" width="919" height="309" rx="12" fill="#fbfbf8" stroke="#d9ddd4"/>
+  <text class="title" x="36" y="43">Stored-mode steady throughput</text>
+  <text class="subtitle" x="36" y="66">1 MiB seeded-random input · median browser wall time</text>
+
+  <line x1="180" y1="88" x2="180" y2="225" stroke="#c9cec5"/>
+  <line x1="413" y1="88" x2="413" y2="225" stroke="#e2e5df"/>
+  <line x1="646" y1="88" x2="646" y2="225" stroke="#e2e5df"/>
+  <line x1="880" y1="88" x2="880" y2="225" stroke="#e2e5df"/>
+  <text class="tick" x="180" y="245" text-anchor="middle">0</text>
+  <text class="tick" x="413" y="245" text-anchor="middle">250</text>
+  <text class="tick" x="646" y="245" text-anchor="middle">500</text>
+  <text class="tick" x="880" y="245" text-anchor="middle">750 MiB/s</text>
+
+  <text class="label" x="36" y="125">FIR native</text>
+  <rect x="180" y="98" width="159" height="38" rx="5" fill="#3e8f87"/>
+  <text class="value" x="350" y="123">170</text>
+
+  <text class="label" x="36" y="195">VIR</text>
+  <rect x="180" y="168" width="698" height="38" rx="5" fill="#d66b35"/>
+  <text class="value" x="866" y="193" text-anchor="end" fill="#ffffff">748</text>
+
+  <line x1="36" y1="263" x2="884" y2="263" stroke="#d9ddd4"/>
+  <text class="note" x="36" y="287">Diagnostic comparison: specialized FIR module versus general VIR interpreter runtime; not equivalent deployment surfaces.</text>
+</svg>

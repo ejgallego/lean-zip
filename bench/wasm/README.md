@@ -58,6 +58,29 @@ node --test bench/wasm/lib.test.mjs
 `zip-wasm-bench-native` loads input and starts its process before timing. Its
 reported samples contain only repeated `Zip.Wasm.compressRaw` calls.
 
+## FIR lazy-cache regression root
+
+[`../../Zip/Wasm/CacheProbe.lean`](../../Zip/Wasm/CacheProbe.lean) exposes
+`Zip.Wasm.distanceCodeCacheProbe : ByteArray → ByteArray`. It performs one call
+to the production `distCodeWordBytesImpl` accessor for each input byte and
+packs each result as four little-endian bytes. Repeated input bytes are
+intentional: a backend that preserves Lean's lazy constant cache initializes
+the 32,769-entry table once, while a backend that substitutes the initializer
+at every access repeats that construction without matcher or emitter noise.
+
+The native oracle supports the same binary contract:
+
+```text
+zip-wasm-oracle cache-probe input.bin expected.bin
+```
+
+This root is a backend diagnostic, not a compressor or a proposed hand-written
+replacement table. FIR should gate a cache-lifetime repair here first, checking
+native byte equality, idempotent initialization, and stable repeated-call
+scratch, before rerunning the complete Level-1 profile. The exact 83-byte
+compressor cliff input is independently pinned in
+[`fixtures/fir-level1-cache-cliff.json`](fixtures/fir-level1-cache-cliff.json).
+
 ## Vir artifact
 
 Vir owns the authoritative executable adapter at

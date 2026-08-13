@@ -4,6 +4,7 @@ import {
   base64ToBytes,
   bytesEqual,
   bytesToBase64,
+  capabilityForInputSize,
   makeReport,
   makeBenchmarkInput,
   normalizeRunSettings,
@@ -37,6 +38,8 @@ const colors = new Map([
   ["fflate", "#b59cff"],
   ["fir-emscripten", "#f1d27a"],
   ["fir-native", "#ff7b72"],
+  ["fir-level1", "#ffb86b"],
+  ["fir-raw", "#f1d27a"],
 ]);
 
 class WorkerClient {
@@ -88,6 +91,10 @@ function capabilityForLevel(id, level) {
     };
   }
   return capability;
+}
+
+function capabilityForRun(id, level, inputBytes) {
+  return capabilityForInputSize(capabilityForLevel(id, level), inputBytes);
 }
 
 function createRows() {
@@ -159,7 +166,7 @@ function renderResult(result, inputBytes) {
   setState(result.id, detail, result.valid && result.exactNative !== false ? "good" : "bad");
 }
 
-function renderVirPhases(result) {
+function renderRuntimePhases(result) {
   const setup = result.preparation?.preparePhases;
   const first = result.firstCallPhases;
   const steady = result.phaseMedians;
@@ -171,6 +178,8 @@ function renderVirPhases(result) {
     ["Artifact acquisition", phase(setup, "acquireMs")],
     ["Wasm compilation", phase(setup, "compileMs")],
     ["Wasm instantiation", phase(setup, "instantiateMs")],
+    ["Persistent initialization", phase(setup, "initializeMs")],
+    ["Initializer idempotence check", phase(setup, "idempotenceMs")],
     ["IR package load", phase(setup, "packageLoadMs")],
     ["Cold call wall", formatMs(result.firstCallMs)],
     ["Cold interpreter", phase(first, "executeMs")],
@@ -192,7 +201,7 @@ function renderVirPhases(result) {
     elements["vir-phase-metrics"].append(item);
   }
   elements["vir-phase-status"].textContent =
-    "Runtime timings are diagnostic; wall samples remain the headline benchmark.";
+    `${result.name} runtime timings are diagnostic; wall samples remain the headline benchmark.`;
 }
 
 async function responseJson(response) {
@@ -260,7 +269,11 @@ async function prepareBackend(id) {
     ? { ...info.runtime, entry: info.entry }
     : id === "fir-native"
         ? info.firNative
-        : {};
+        : id === "fir-level1"
+          ? info.firLevel1
+          : id === "fir-raw"
+            ? info.firRaw
+          : {};
   try {
     const preparation = await client.request("prepare", configuration);
     client.preparation = preparation;
@@ -296,6 +309,18 @@ function renderIdentity() {
     values.push(
       ["FIR native", `${info.artifacts.firNative.firCommit.slice(0, 12)} · stored level 0`],
       ["FIR Wasm", `${formatBytes(info.artifacts.firNative.wasm.bytes)} · ${info.artifacts.firNative.wasm.sha256.slice(0, 16)}…`],
+    );
+  }
+  if (info.artifacts.firLevel1 !== null) {
+    values.push(
+      ["FIR Level 1", `${info.artifacts.firLevel1.firCommit.slice(0, 12)} · production level 1`],
+      ["FIR L1 Wasm", `${formatBytes(info.artifacts.firLevel1.wasm.bytes)} · ${info.artifacts.firLevel1.wasm.sha256.slice(0, 16)}…`],
+    );
+  }
+  if (info.artifacts.firRaw !== null) {
+    values.push(
+      ["FIR levels 1–10", `${info.artifacts.firRaw.firCommit.slice(0, 12)} · production dispatcher`],
+      ["FIR raw Wasm", `${formatBytes(info.artifacts.firRaw.wasm.bytes)} · ${info.artifacts.firRaw.wasm.sha256.slice(0, 16)}…`],
     );
   }
   elements.identity.replaceChildren();
@@ -454,7 +479,7 @@ async function runComparison() {
   latestRun = null;
   globalThis.__leanZipLatestReport = null;
   elements["vir-phase-metrics"].replaceChildren();
-  elements["vir-phase-status"].textContent = "Waiting for the VIR lane…";
+  elements["vir-phase-status"].textContent = "Waiting for a VIR or FIR lane…";
   document.documentElement.dataset.runStatus = "running";
   const results = [];
   let failed = false;
@@ -470,13 +495,13 @@ async function runComparison() {
     };
     elements.status.textContent = "Native Lean is establishing the reference stream…";
     for (const backend of BACKENDS) {
-      const capability = capabilityForLevel(backend.id, settings.level);
+      const capability = capabilityForRun(backend.id, settings.level, input.byteLength);
       if (!capability.available) setState(backend.id, capability.reason, "pending");
       else setState(backend.id, "queued", "pending");
     }
 
     let nativeOutput = null;
-    if (capabilityForLevel("native", settings.level).available) {
+    if (capabilityForRun("native", settings.level, input.byteLength).available) {
       try {
         setState("native", "running", "running");
         const nativeValue = await api("/api/native/run", { input: bytesToBase64(input), ...settings });
@@ -491,8 +516,9 @@ async function runComparison() {
       }
     }
 
-    for (const id of ["vir", "fir-native", "compression-stream", "fflate"]) {
-      if (!capabilityForLevel(id, settings.level).available) continue;
+    for (const id of ["vir", "fir-native", "fir-level1", "fir-raw",
+      "compression-stream", "fflate"]) {
+      if (!capabilityForRun(id, settings.level, input.byteLength).available) continue;
       elements.status.textContent = `${BACKENDS.find((backend) => backend.id === id).name} is running in its worker…`;
       try {
         const value = await runWorkerBackend(id, input, settings);
@@ -503,7 +529,9 @@ async function runComparison() {
         const result = { ...value, valid: validation.valid, exactNative, sha256: validation.sha256 };
         results.push(result);
         renderResult(result, input.byteLength);
-        if (id === "vir") renderVirPhases(result);
+        if (["vir", "fir-native", "fir-level1", "fir-raw"].includes(id)) {
+          renderRuntimePhases(result);
+        }
         if (!validation.valid || exactNative === false) failed = true;
       } catch (error) {
         failed = true;
@@ -604,11 +632,24 @@ async function initialize() {
     }
     const requestedInput = query.get("case");
     const requestedBytes = query.get("bytes");
+    const requestedSize = Number(requestedBytes);
     if (BENCHMARK_INPUTS.some((item) => item.id === requestedInput) &&
-        ["1024", "16384", "65536", "262144", "1048576"].includes(requestedBytes)) {
+        Number.isInteger(requestedSize) && requestedSize >= 0 &&
+        requestedSize <= info.maxInputBytes) {
       elements.preset.value = requestedInput;
-      elements["preset-size"].value = requestedBytes;
-      applyPreset();
+      if (["1024", "16384", "65536", "262144", "1048576"]
+          .includes(requestedBytes)) {
+        elements["preset-size"].value = requestedBytes;
+        applyPreset();
+      } else {
+        generatedInput = makeBenchmarkInput(requestedInput, requestedSize);
+        generatedName = `${requestedInput}-${requestedSize}`;
+        selectedFile = null;
+        elements.file.value = "";
+        elements["source-label"].textContent =
+          `${BENCHMARK_INPUTS.find((item) => item.id === requestedInput).name} · generated`;
+        updateInputSize();
+      }
     }
     if (["1", "3", "5", "9"].includes(query.get("samples"))) {
       elements.samples.value = query.get("samples");

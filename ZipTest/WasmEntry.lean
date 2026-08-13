@@ -1,4 +1,5 @@
 import Zip.Wasm.Entry
+import Zip.Wasm.CacheProbe
 import Zip.Native.InflateTreeFree
 
 /-! Native conformance checks for the backend-neutral WASM roots. -/
@@ -52,6 +53,18 @@ private def checkSmallCase (name : String) (input : ByteArray) : IO Unit := do
 
 def tests : IO Unit := do
   IO.println "  WasmEntry tests..."
+  -- The first eight bytes of the tracked cache-cliff fixture. Keep the expected
+  -- words literal so this checks the probe contract rather than recomputing it
+  -- through the same accessor.
+  let cacheProbeInput := ByteArray.mk #[123, 10, 32, 32, 34, 102, 111, 114]
+  let cacheProbeExpected := ByteArray.mk #[
+    0x0D, 0x05, 0x1B, 0x00, 0x06, 0x02, 0x02, 0x00,
+    0x0A, 0x04, 0x00, 0x00, 0x0A, 0x04, 0x00, 0x00,
+    0x0A, 0x04, 0x02, 0x00, 0x0D, 0x05, 0x06, 0x00,
+    0x0D, 0x05, 0x0F, 0x00, 0x0D, 0x05, 0x12, 0x00]
+  unless Zip.Wasm.distanceCodeCacheProbe cacheProbeInput == cacheProbeExpected do
+    throw (IO.userError "distance-code cache probe output mismatch")
+
   let cases : List (String × ByteArray) :=
     [("empty", ByteArray.empty),
      ("short", ByteArray.mk #[0, 1, 2, 3, 255]),

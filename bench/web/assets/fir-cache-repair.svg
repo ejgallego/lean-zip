@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" role="img" aria-labelledby="title desc">
+  <title id="title">FIR persistent-cache repair timing</title>
+  <desc id="desc">A logarithmic comparison shows the superseded 47.1 second per-call cache rebuild, the new 1.01 second one-time initializer, and the new 4.80 millisecond steady compression call for the exact 83-byte input.</desc>
+  <style>
+    text { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; fill: #242721; }
+    .title { font-size: 22px; font-weight: 700; }
+    .subtitle, .tick, .note { font-size: 13px; fill: #5c6258; }
+    .label { font-size: 15px; font-weight: 600; }
+    .value { font-size: 14px; font-weight: 700; }
+  </style>
+  <rect x="0.5" y="0.5" width="919" height="359" rx="12" fill="#fbfbf8" stroke="#d9ddd4"/>
+  <text class="title" x="36" y="43">FIR cache lifetime repair</text>
+  <text class="subtitle" x="36" y="66">Exact 83-byte input · Chrome wall time · logarithmic scale</text>
+
+  <line x1="210" y1="88" x2="210" y2="276" stroke="#c9cec5"/>
+  <line x1="350" y1="88" x2="350" y2="276" stroke="#e2e5df"/>
+  <line x1="490" y1="88" x2="490" y2="276" stroke="#e2e5df"/>
+  <line x1="630" y1="88" x2="630" y2="276" stroke="#e2e5df"/>
+  <line x1="770" y1="88" x2="770" y2="276" stroke="#e2e5df"/>
+  <text class="tick" x="210" y="296" text-anchor="middle">1 ms</text>
+  <text class="tick" x="350" y="296" text-anchor="middle">10 ms</text>
+  <text class="tick" x="490" y="296" text-anchor="middle">100 ms</text>
+  <text class="tick" x="630" y="296" text-anchor="middle">1 s</text>
+  <text class="tick" x="770" y="296" text-anchor="middle">10 s</text>
+
+  <text class="label" x="36" y="126">old steady call</text>
+  <rect x="210" y="99" width="654" height="38" rx="5" fill="#aeb5aa"/>
+  <text class="value" x="850" y="124" text-anchor="end" fill="#ffffff">47,074 ms</text>
+
+  <text class="label" x="36" y="195">new one-time init</text>
+  <rect x="210" y="168" width="421" height="38" rx="5" fill="#d66b35"/>
+  <text class="value" x="617" y="193" text-anchor="end" fill="#ffffff">1,006 ms</text>
+
+  <text class="label" x="36" y="264">new steady call</text>
+  <rect x="210" y="237" width="95" height="38" rx="5" fill="#3e8f87"/>
+  <text class="value" x="318" y="262">4.80 ms</text>
+
+  <line x1="36" y1="315" x2="884" y2="315" stroke="#d9ddd4"/>
+  <text class="note" x="36" y="340">Initialization is per Wasm instance; steady calls retain the cache checkpoint and rewind scratch above it.</text>
+</svg>

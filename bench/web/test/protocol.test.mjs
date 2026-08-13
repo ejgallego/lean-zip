@@ -7,6 +7,7 @@ import {
   base64ToBytes,
   bytesEqual,
   bytesToBase64,
+  capabilityForInputSize,
   median,
   mibPerSecond,
   makeBenchmarkInput,
@@ -44,6 +45,20 @@ test("run settings enforce the interactive safety bounds", () => {
   assert.throws(() => normalizeRunSettings({ level: 11, warmups: 0, iterations: 1, samples: 1 }));
 });
 
+test("backend-specific input caps fail closed without disabling other runs", () => {
+  const capability = { id: "fir-level1", available: true, maxInputBytes: 1048576 };
+  assert.equal(capabilityForInputSize(capability, 1048576), capability);
+  assert.deepEqual(capabilityForInputSize(capability, 1048577), {
+    ...capability,
+    available: false,
+    reason: "input exceeds this backend's 1048576-byte demo safety cap",
+  });
+  assert.equal(
+    capabilityForInputSize({ id: "vir", available: true }, 1024).available,
+    true,
+  );
+});
+
 test("throughput and backend settings remain backend-specific", () => {
   assert.equal(mibPerSecond(1024 * 1024, 500), 2);
   assert.equal(backendById("compression-stream").setting(9), "browser default (no level API)");
@@ -51,6 +66,8 @@ test("throughput and backend settings remain backend-specific", () => {
   assert.equal(backendById("vir").setting(6), "lean-zip level 6");
   assert.equal(backendById("fir-native").setting(0), "stored DEFLATE · Lean level 0");
   assert.equal(backendById("fir-native").setting(6), "stored DEFLATE · level 0 only");
+  assert.equal(backendById("fir-level1").setting(1), "production DEFLATE · Lean level 1");
+  assert.equal(backendById("fir-level1").setting(6), "production DEFLATE · level 1 only");
 });
 
 test("client-native profile closes over lean-zip's seven wide accelerators", async () => {

@@ -9,6 +9,7 @@ import {
   backendOrder,
   median,
   readPackageInput,
+  validateUtf8Fixture,
   validateNativeSampleReport,
   validatePlan,
 } from "./lib.mjs";
@@ -93,6 +94,23 @@ test("tracked benchmark plan validates", async () => {
     "smoke", "level-matrix", "canterbury", "prescan-threshold",
   ]);
   assert.deepEqual(validated.suites[1].workloads[0].levels, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+});
+
+test("tracked FIR cache-cliff fixture has an exact UTF-8 identity", async () => {
+  const fixture = JSON.parse(await readFile(
+    new URL("./fixtures/fir-level1-cache-cliff.json", import.meta.url),
+    "utf8",
+  ));
+  const validated = validateUtf8Fixture(fixture);
+  assert.equal(validated.bytes.byteLength, 83);
+  assert.equal(
+    fixture.sha256,
+    "7454c48bf467ffb1242de50e40a8a03d6640680d39e2775318561e7f131a8ead",
+  );
+  assert.throws(
+    () => validateUtf8Fixture({ ...fixture, byteLength: fixture.byteLength + 1 }),
+    /byteLength mismatch/,
+  );
 });
 
 test("plan rejects duplicate suite ids", () => {

@@ -22,11 +22,13 @@ const iterations = Number(take("--iterations", "1"));
 const outputPath = take("--out");
 
 if (!Number.isInteger(debugPort) || !Number.isFinite(timeoutMs) || timeoutMs <= 0 ||
-    !["vir", "fir-native"].includes(backendId) ||
+    !["vir", "fir-native", "fir-level1", "fir-raw"].includes(backendId) ||
     ![1, 3, 5, 9].includes(samples) || ![0, 1, 3, 5, 10].includes(warmups) ||
     ![1, 3, 5, 10, 20].includes(iterations) ||
-    cases.some((value) => !["repeated", "structured", "random", "zeros"].includes(value)) ||
-    sizes.some((value) => ![1024, 16384, 65536, 262144, 1048576].includes(value)) ||
+    cases.some((value) => !["editable", "repeated", "structured", "random", "zeros"]
+      .includes(value)) ||
+    sizes.some((value) => ![6, 83, 96, 256, 1024, 4096, 16384,
+      65536, 262144, 1048576].includes(value)) ||
     levels.some((value) => !Number.isInteger(value) || value < 0 || value > 10)) {
   throw new Error("invalid sweep arguments");
 }
@@ -104,8 +106,10 @@ async function evaluate(expression) {
 
 async function runCase(kind, bytes, level) {
   const url = new URL(baseUrl);
-  url.searchParams.set("case", kind);
-  url.searchParams.set("bytes", String(bytes));
+  if (kind !== "editable") {
+    url.searchParams.set("case", kind);
+    url.searchParams.set("bytes", String(bytes));
+  }
   url.searchParams.set("level", String(level));
   url.searchParams.set("samples", String(samples));
   url.searchParams.set("warmups", String(warmups));
@@ -140,7 +144,9 @@ async function runCase(kind, bytes, level) {
     throw new Error(`${kind}/${bytes}/L${level} ${status ?? "timed out"}: ${summary}`);
   }
   const report = await evaluate("globalThis.__leanZipLatestReport");
-  if (report?.source?.name !== `${kind}-${bytes}` || report?.settings?.level !== level) {
+  const expectedSource = kind === "editable" ? "textarea" : `${kind}-${bytes}`;
+  if (report?.source?.name !== expectedSource || report?.source?.bytes !== bytes ||
+      report?.settings?.level !== level) {
     throw new Error(`${kind}/${bytes}/L${level}: browser returned the wrong report`);
   }
   const native = report.results.find((result) => result.id === "native");
@@ -169,9 +175,15 @@ async function runCase(kind, bytes, level) {
   if (backendId === "vir") {
     row.vir = candidate;
     row.ratios.virOverNative = row.ratios.candidateOverNative;
-  } else {
+  } else if (backendId === "fir-native") {
     row.firNative = candidate;
     row.ratios.firNativeOverNative = row.ratios.candidateOverNative;
+  } else if (backendId === "fir-level1") {
+    row.firLevel1 = candidate;
+    row.ratios.firLevel1OverNative = row.ratios.candidateOverNative;
+  } else {
+    row.firRaw = candidate;
+    row.ratios.firRawOverNative = row.ratios.candidateOverNative;
   }
   delete row.candidate;
   const ratio = row.ratios.candidateOverNative?.toFixed(1) ?? "—";

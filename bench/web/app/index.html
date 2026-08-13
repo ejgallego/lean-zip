@@ -16,8 +16,9 @@
     <p class="kicker">One stream. Verified runtime and native paths.</p>
     <h1>Compression,<br><em>under glass.</em></h1>
     <p class="lede">Run the production Lean raw-DEFLATE compressor beside browser-native and JavaScript
-      codecs. VIR uses the package-scoped interpreter runtime, while FIR's first genuine native slice joins
-      level 0. The superseded per-call-cache VIR runtime is excluded. Outputs are independently inflated;
+      codecs. VIR uses the package-scoped interpreter runtime. FIR's genuine native stored slice joins
+      level 0, and an independently packaged production Level-1 slice can join level 1. The superseded
+      per-call-cache VIR runtime is excluded. Outputs are independently inflated;
       matching Lean backends must also agree byte-for-byte.</p>
   </header>
 
@@ -68,7 +69,7 @@
         </label>
         <button id="run" type="button"><span>Run comparison</span><b>→</b></button>
       </div>
-      <p class="hint">VIR currently interprets Lean IR. FIR native is a real zero-import stored-DEFLATE artifact and participates only at level 0.</p>
+      <p class="hint">VIR currently interprets Lean IR. FIR packages are zero-import native Wasm and are capability-gated independently at levels 0 and 1.</p>
     </section>
 
     <section class="results-section">
@@ -89,8 +90,8 @@
 
     <section class="diagnostic-panel panel">
       <div class="section-heading">
-        <div><span class="step">03</span><h2>VIR call anatomy</h2></div>
-        <p id="vir-phase-status" aria-live="polite">Run VIR to separate setup, boundary, and interpreter time.</p>
+        <div><span class="step">03</span><h2>Runtime call anatomy</h2></div>
+        <p id="vir-phase-status" aria-live="polite">Run VIR or FIR to separate setup and execution time.</p>
       </div>
       <dl id="vir-phase-metrics" class="diagnostic-metrics"></dl>
     </section>
@@ -133,11 +134,11 @@
     <section class="method">
       <h2>Reading the numbers</h2>
       <div class="method-grid">
-        <p><b>Comparable Lean bytes.</b> Native Lean and VIR use the same level and must emit exactly the same stream. FIR joins this exact check at level 0.</p>
+        <p><b>Comparable Lean bytes.</b> Native Lean and VIR use the same level and must emit exactly the same stream. Attached FIR stored and Level-1 packages join this exact check at levels 0 and 1.</p>
         <p><b>Independent codec settings.</b> CompressionStream has no level API; fflate caps its knob at 9. Their level labels are not quality equivalence claims.</p>
         <p><b>Timing boundaries.</b> Browser calls run in dedicated workers. Native samples are measured inside one Lean process; validation happens afterward.</p>
         <p><b>Supported VIR only.</b> VIR persists nullary constants for one loaded package set. The superseded per-call-cache runtime is not part of the dataset.</p>
-        <p><b>FIR scope.</b> FIR's resident ByteArray stored compressor is executable and zero-import. Level 1/full raw DEFLATE remain gated on final-capture support.</p>
+        <p><b>FIR scope.</b> FIR stored and production Level-1 packages have separate identities and rows. The full levels 0–10 dispatcher remains gated.</p>
       </div>
     </section>
   </main>

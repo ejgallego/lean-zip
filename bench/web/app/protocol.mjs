@@ -89,12 +89,45 @@ export const BACKENDS = Object.freeze([
       ? "stored DEFLATE · Lean level 0"
       : "stored DEFLATE · level 0 only",
   },
+  {
+    id: "fir-level1",
+    name: "FIR native · Level 1",
+    family: "lean-zip",
+    execution: "browser WebAssembly",
+    setting: (level) => level === 1
+      ? "production DEFLATE · Lean level 1"
+      : "production DEFLATE · level 1 only",
+  },
+  {
+    id: "fir-raw",
+    name: "FIR native · levels 1–10",
+    family: "lean-zip",
+    execution: "browser WebAssembly",
+    setting: (level) => level >= 1 && level <= 10
+      ? `production DEFLATE · Lean level ${level}`
+      : "production DEFLATE · levels 1–10",
+  },
 ]);
 
 export function backendById(id) {
   const backend = BACKENDS.find((candidate) => candidate.id === id);
   if (backend === undefined) throw new Error(`unknown backend: ${id}`);
   return backend;
+}
+
+export function capabilityForInputSize(capability, inputBytes) {
+  if (!Number.isInteger(inputBytes) || inputBytes < 0) {
+    throw new TypeError("inputBytes must be a non-negative integer");
+  }
+  if (!capability.available || !Number.isInteger(capability.maxInputBytes) ||
+      inputBytes <= capability.maxInputBytes) {
+    return capability;
+  }
+  return {
+    ...capability,
+    available: false,
+    reason: `input exceeds this backend's ${capability.maxInputBytes}-byte demo safety cap`,
+  };
 }
 
 export function median(values) {
@@ -177,7 +210,7 @@ export function makeReport({ info, source, settings, results, diagnostics = null
       "Correctness validation and report rendering are outside timed regions.",
       "Native Lean samples exclude process startup; browser samples run in dedicated workers.",
       "Focused VIR diagnostics do not replace or modify the production compressor lane.",
-      "The FIR-native stored artifact participates only at Lean level 0; Level 1 and the full dispatcher remain gated.",
+      "FIR stored and Level-1 artifacts are independently capability-gated at Lean levels 0 and 1; the full dispatcher remains gated.",
     ],
   };
 }
