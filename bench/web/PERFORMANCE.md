@@ -21,7 +21,7 @@ are excluded.
 - FIR production-dispatcher producer: FIR `1d79658d`, lean-zip `30737b4e`
 - FIR production levels 1–10 Wasm: 1,753,310 bytes,
   `0686e69684c187b1b14415f0f3b88fe4ce28514c97f8aac003fbd7359f15b838`
-- FIR C/Emscripten producer: FIR `515bf401`, lean-zip `5c27bbd0`
+- FIR C/Emscripten producer: FIR `515bf401`, lean-zip `261268cc`
 - FIR C/Emscripten Wasm: 2,346,345 bytes,
   `8a37e8c76883c29c04b2e764482c62ec303344129b547b1f6a150a74a0c9ec7f`
 
