@@ -168,12 +168,10 @@ function renderResult(result, inputBytes) {
 
 function renderRuntimePhases(result) {
   const setup = result.preparation?.preparePhases;
-  const priming = result.primingPhases;
   const first = result.firstCallPhases;
   const steady = result.phaseMedians;
   const lazyCachePriming = result.profile === "resident-raw-v2";
-  const primingArena = result.primingDetails?.arena;
-  const firstArena = result.firstCallDetails?.arena;
+  const coldArena = result.firstCallDetails?.arena;
   const steadyArena = result.sampleDetails?.at(-1)?.arena;
   const phase = (value, name) => value === null || value === undefined
     ? "—"
@@ -186,22 +184,14 @@ function renderRuntimePhases(result) {
     ["Persistent initialization", phase(setup, "initializeMs")],
     ["Initializer idempotence check", phase(setup, "idempotenceMs")],
     ["IR package load", phase(setup, "packageLoadMs")],
-    ...(lazyCachePriming ? [
-      ["Workload lazy-cache priming", formatMs(result.primingMs)],
-      ["Priming execute", phase(priming, "executeMs")],
-      ["Priming marshal / decode", priming === null ? "—" : `${formatMs(priming.marshalMs)} / ${formatMs(priming.decodeMs)}`],
-      ["Priming persistent cache growth",
-        primingArena === undefined ? "—" : formatBytes(primingArena.persistentGrowth)],
-    ] : []),
-    [lazyCachePriming ? "First measured wall (post-prime)" : "Cold call wall",
+    [lazyCachePriming ? "Cold call + lazy-cache priming" : "Cold call wall",
       formatMs(result.firstCallMs)],
-    [lazyCachePriming ? "First measured execute" : "Cold interpreter",
+    [lazyCachePriming ? "Cold execute (includes priming)" : "Cold interpreter",
       phase(first, "executeMs")],
-    [lazyCachePriming ? "First measured marshal / decode" : "Cold marshal / decode",
-      first === null ? "—" : `${formatMs(first.marshalMs)} / ${formatMs(first.decodeMs)}`],
+    ["Cold marshal / decode", first === null ? "—" : `${formatMs(first.marshalMs)} / ${formatMs(first.decodeMs)}`],
     ...(lazyCachePriming ? [
-      ["First measured persistent growth",
-        firstArena === undefined ? "—" : formatBytes(firstArena.persistentGrowth)],
+      ["Cold persistent cache growth",
+        coldArena === undefined ? "—" : formatBytes(coldArena.persistentGrowth)],
     ] : []),
     ["Steady wall", formatMs(result.medianMs)],
     ["Steady interpreter", phase(steady, "executeMs")],
@@ -211,9 +201,7 @@ function renderRuntimePhases(result) {
       ["Steady persistent cache growth",
         steadyArena === undefined ? "—" : formatBytes(steadyArena.persistentGrowth)],
     ] : []),
-    ["Wasm pages", lazyCachePriming
-      ? `${result.memoryPagesBefore} → ${result.memoryPagesAfterPriming} after prime → ${result.memoryPagesAfter}`
-      : `${result.memoryPagesBefore} → ${result.memoryPagesAfterFirst} → ${result.memoryPagesAfter}`],
+    ["Wasm pages", `${result.memoryPagesBefore} → ${result.memoryPagesAfterFirst} → ${result.memoryPagesAfter}`],
   ];
   elements["vir-phase-metrics"].replaceChildren();
   for (const [term, description] of values) {
@@ -226,7 +214,7 @@ function renderRuntimePhases(result) {
     elements["vir-phase-metrics"].append(item);
   }
   elements["vir-phase-status"].textContent = lazyCachePriming
-    ? `${result.name} primes Lean lazy caches with the selected workload before timing. Priming stays visible; every measured call is rejected unless persistent growth is zero.`
+    ? `${result.name} populates Lean lazy caches on its first workload call; the cold cost stays visible, while the headline steady median uses later flat-rewind calls.`
     : `${result.name} runtime timings are diagnostic; wall samples remain the headline benchmark.`;
 }
 

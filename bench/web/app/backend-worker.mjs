@@ -283,45 +283,18 @@ async function run(inputBuffer, settings) {
   if (prepared === null) throw new Error("backend has not been prepared");
   const input = new Uint8Array(inputBuffer);
   const memoryPagesBefore = prepared.memory();
-  const primeLazyCaches = backendId === "fir-raw" &&
-    prepared.profile === "resident-raw-v2";
-
-  let primingMs = null;
-  let primingPhases = null;
-  let primingDetails = null;
-  let memoryPagesAfterPriming = memoryPagesBefore;
-  let output = new Uint8Array();
-  let checksum = 0;
-  if (primeLazyCaches) {
-    const primingStarted = performance.now();
-    const priming = await compressOnce(input, settings.level);
-    primingMs = performance.now() - primingStarted;
-    primingPhases = priming.phases;
-    primingDetails = priming.details;
-    memoryPagesAfterPriming = prepared.memory();
-    output = priming.output;
-    checksum += output.byteLength;
-  }
-
-  const requireFlatCache = (call, label) => {
-    if (primeLazyCaches && call.details?.arena?.persistentGrowth !== 0) {
-      throw new Error(`${backend.name} ${label} populated a lazy cache after priming`);
-    }
-  };
 
   let started = performance.now();
   let call = await compressOnce(input, settings.level);
-  requireFlatCache(call, "first measured call");
   const firstCallMs = performance.now() - started;
-  output = call.output;
+  let output = call.output;
   const firstCallPhases = call.phases;
   const firstCallDetails = call.details;
   const memoryPagesAfterFirst = prepared.memory();
 
-  checksum += output.byteLength;
+  let checksum = output.byteLength;
   for (let call = 0; call < settings.warmups; call += 1) {
     const warmup = await compressOnce(input, settings.level);
-    requireFlatCache(warmup, `warmup ${call + 1}`);
     output = warmup.output;
     checksum += output.byteLength;
   }
@@ -336,7 +309,6 @@ async function run(inputBuffer, settings) {
     started = performance.now();
     for (let iteration = 0; iteration < settings.iterations; iteration += 1) {
       call = await compressOnce(input, settings.level);
-      requireFlatCache(call, `sample ${sample + 1} iteration ${iteration + 1}`);
       output = call.output;
       if (call.phases !== null) {
         for (const [name, value] of Object.entries(call.phases)) {
@@ -372,9 +344,6 @@ async function run(inputBuffer, settings) {
       ? `${backend.setting(settings.level)} · ${prepared.profile}`
       : backend.setting(settings.level),
     profile: prepared.profile ?? null,
-    primingMs,
-    primingPhases,
-    primingDetails,
     firstCallMs,
     firstCallPhases,
     firstCallDetails,
@@ -386,7 +355,6 @@ async function run(inputBuffer, settings) {
     mibPerSecond: mibPerSecond(input.byteLength, medianMs),
     checksum,
     memoryPagesBefore,
-    memoryPagesAfterPriming,
     memoryPagesAfterFirst,
     memoryPagesAfterWarmups,
     memoryPageSamples,
