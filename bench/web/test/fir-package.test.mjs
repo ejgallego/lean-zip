@@ -50,6 +50,11 @@ function validMetadata(profile) {
           },
         }),
         ...(profile.id === "raw" ? {
+          persistentCaches: {
+            initializer: null,
+            cacheAwareRewind: true,
+            warmCallStable: true,
+          },
           completeRuntime: {
             selfContained: true,
             externalRuntime: {
@@ -134,6 +139,17 @@ test("raw FIR profile advertises the production levels 1 through 10", () => {
         },
       },
     }, descriptor), /standard-math runtime contract/);
+  assert.throws(() => validateFirPackageMetadata(profile,
+    {
+      ...build,
+      capabilities: {
+        ...build.capabilities,
+        persistentCaches: {
+          ...build.capabilities.persistentCaches,
+          cacheAwareRewind: false,
+        },
+      },
+    }, descriptor), /lazy-cache rewind contract/);
 });
 
 test("Level-1 FIR package metadata binds source entry, ABI, and zero-import closure", () => {

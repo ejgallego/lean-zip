@@ -38,9 +38,9 @@ export const FIR_PACKAGE_PROFILES = Object.freeze({
   raw: Object.freeze({
     id: "raw",
     backendId: "fir-raw",
-    schemaVersion: "fir.lean-zip.raw.build/v1",
+    schemaVersion: "fir.lean-zip.raw.build/v2",
     sourceName: "Zip.Wasm.compressRaw",
-    adapterApiVersion: "fir.lean-zip.raw.browser/v1",
+    adapterApiVersion: "fir.lean-zip.raw.browser/v2",
     adapterFile: "lean-zip-raw-browser-adapter.mjs",
     adapterImplementationFile: "lean-zip-byte-array-browser-adapter.mjs",
     auxiliaryFiles: Object.freeze(["standard-math-runtime-contract.mjs"]),
@@ -50,8 +50,8 @@ export const FIR_PACKAGE_PROFILES = Object.freeze({
     wasmFile: "lean-zip-raw.wasm",
     descriptorFile: "lean-zip-raw.wasm.json",
     smokeFile: "smoke.mjs",
-    profile: "resident-raw-v1",
-    persistentInitializer: "fir_initialize_persistent_caches",
+    profile: "resident-raw-v2",
+    persistentInitializer: null,
     levels: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
   }),
 });
@@ -144,6 +144,11 @@ export function validateFirPackageMetadata(profile, build, descriptor) {
     ];
     const expectedMathDeclarations = expectedFrontierImports.map(
       ({ name }) => name);
+    requireCondition(build.entry?.persistentInitializer === null &&
+      build.capabilities?.persistentCaches?.initializer === null &&
+      build.capabilities.persistentCaches.cacheAwareRewind === true &&
+      build.capabilities.persistentCaches.warmCallStable === true,
+    "FIR raw package has an unsupported lazy-cache rewind contract");
     requireCondition(build.capabilities?.completeRuntime?.selfContained === true &&
       build.capabilities.completeRuntime.externalRuntime?.version ===
         "fir.standard-math/v1" &&

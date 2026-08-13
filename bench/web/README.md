@@ -242,7 +242,11 @@ It must record the exact pre-link frontier
 `Float.ofNat`/`Float.ofScientific`/`Float.log2`, the standard-runtime version
 and 65,536-byte reservation, a zero-import complete module, and the
 `ByteArray × UInt8 → ByteArray` ABI. Its adapter operation is
-`compressRaw(Uint8Array, level)` with `level` in 1–10.
+`compressRaw(Uint8Array, level)` with `level` in 1–10. Unlike the Level-1
+package, raw v2 does not eagerly call a persistent initializer: compiler lazy
+caches are populated at their original use sites, publication advances a
+monotonic resident rewind floor, and a repeated warm call must rewind flat to
+the resulting checkpoint.
 
 Every new FIR capability must first execute successfully in a real Wasm engine,
 then use the same prepare/run phases and pass native byte equality plus
