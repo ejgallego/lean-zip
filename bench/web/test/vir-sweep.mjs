@@ -164,7 +164,9 @@ async function runCase(kind, bytes, level) {
     candidate,
     ratios: {
       candidateOverNative: native.medianMs > 0 ? candidate.medianMs / native.medianMs : null,
-      coldOverWarm: candidate.medianMs > 0 ? candidate.firstCallMs / candidate.medianMs : null,
+      coldOverWarm: candidate.medianMs > 0
+        ? (candidate.primingMs ?? candidate.firstCallMs) / candidate.medianMs
+        : null,
       executeShare,
     },
     stability: {
