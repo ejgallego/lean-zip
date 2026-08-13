@@ -1,8 +1,9 @@
 # Vir/FIR WASM port plan
 
-Status: native/VIR, the FIR stored control, and the FIR production levels 1–10 dispatcher
-are integrated. The constant-time resident Array repair is accepted on FIR
-main, and the comparison lab admits its clean immutable package.
+Status: native/VIR and both FIR production levels 1–10 routes are integrated.
+The constant-time resident Array repair is accepted on FIR main; the comparison
+lab admits both its clean resident-native package and the full-runtime
+C/Emscripten package.
 
 Local worktree: `.worktrees/vir-fir-wasm-port`
 
@@ -15,8 +16,8 @@ Local branch: `feat/vir-fir-wasm-port`
 | P0 | Coordination and artifact identity | complete | Keep this plan and the VIR/FIR handoffs synchronized with immutable artifact hashes. |
 | P1 | FIR production dispatcher | integrated; scaling study next | Run the clean levels 1–10 package across representative sizes and profile the post-Array-fix runtime. |
 | P2 | VIR performance | attributed; VIR experiment pending | Screen call-site symbol resolution first, then re-profile and run order-balanced representative acceptance. |
-| P3 | FIR stored performance | diagnosed; experiment queued | Compare the existing iterative stored encoder with the recursive verified root under FIR and pursue a proof-backed substitution only if scratch becomes linear. |
-| P4 | FIR C/Emscripten | deferred | Reconsider only if a non-FIR-native reference lane becomes useful. |
+| P3 | FIR C/Emscripten | integrated | Compare it order-balanced with FIR native, then move the narrow generated-C/runtime Bool ABI correction into shared infrastructure. |
+| P4 | Historical stored control | retired from UI | Keep its scratch-frontier diagnosis as historical evidence; do not present it as a production competitor. |
 
 ## Current local checkpoint (2026-08-12)
 
@@ -157,21 +158,22 @@ identified producer, runtime, package, JavaScript byte boundary, and
 repeated-call evidence. Each lane is independently inflated, and the Lean lanes
 must additionally match native bytes exactly.
 
-FIR exposes two production scopes rather than one ambiguous "FIR" result:
+FIR exposes two production routes rather than one ambiguous "FIR" result:
 
-- **FIR C/Emscripten** is a deferred reference path. Its maintained
-  builder accepts additional Lean/C sources, explicit C exports, and an
-  Emscripten `HEAPU8` bulk-transfer view; its loader verifies manifest hashes
-  before initializing the pinned full Lean runtime. lean-zip still needs a
-  binary-safe allocation/result bridge and its project native providers linked
-  as explicit sources.
 - **FIR-native** remains the target compiler-backend result. The stored control
-  handles level 0. The clean production `compressRaw` package handles every
-  level from 1 through 10 through one ABI and one browser row. FIR `1d79658d`
+  is no longer presented as a separate level-0 row. The clean production
+  `compressRaw` package handles every level from 1 through 10 through one ABI
+  and one browser row. FIR `1d79658d`
   supplies constant-time resident Array indexing; the resulting 1,753,310-byte
   zero-import Wasm has SHA-256
   `0686e69684c187b1b14415f0f3b88fe4ce28514c97f8aac003fbd7359f15b838`.
   The full 5-case × 10-level native-byte/inflate gate passes.
+- **FIR C/Emscripten** calls the identical production dispatcher through final
+  LCNF, Lean C, LLVM, Emscripten, and the full Lean runtime. A binary-safe
+  allocation/result bridge transfers bytes through `HEAPU8`; the package links
+  the lean-zip native providers explicitly and verifies its manifest before
+  initialization. Its 4-case × 10-level Node gate and 27-cell real-browser
+  sweep pass exact native bytes and independent inflate.
 
 This plan assumes that "the main routine" means the pure compressor entry point
 `Zip.Native.Deflate.deflateRaw`, rather than the `ZipTest.main` test runner or the

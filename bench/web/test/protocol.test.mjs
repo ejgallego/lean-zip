@@ -65,15 +65,15 @@ test("throughput and backend settings remain backend-specific", () => {
   assert.equal(backendById("compression-stream").setting(9), "browser default (no level API)");
   assert.equal(backendById("fflate").setting(10), "fflate level 9");
   assert.equal(backendById("vir").setting(6), "lean-zip level 6");
-  assert.equal(backendById("fir-native").setting(0), "stored DEFLATE control · Lean level 0");
-  assert.equal(backendById("fir-native").setting(6), "stored DEFLATE control · level 0 only");
   assert.equal(backendById("fir-raw").setting(1), "production DEFLATE · Lean level 1");
   assert.equal(backendById("fir-raw").setting(10), "production DEFLATE · Lean level 10");
+  assert.equal(backendById("fir-emscripten").setting(6),
+    "Lean C/Emscripten · level 6");
 });
 
-test("production FIR is displayed immediately after VIR", () => {
+test("both production FIR routes are displayed immediately after VIR", () => {
   assert.deepEqual(BACKENDS.slice(0, 4).map(({ id }) => id), [
-    "native", "vir", "fir-raw", "fir-native",
+    "native", "vir", "fir-raw", "fir-emscripten",
   ]);
 });
 

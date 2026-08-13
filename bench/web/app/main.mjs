@@ -36,9 +36,8 @@ const colors = new Map([
   ["vir", "#ff8a50"],
   ["compression-stream", "#65d8d2"],
   ["fflate", "#b59cff"],
-  ["fir-emscripten", "#f1d27a"],
-  ["fir-native", "#ff7b72"],
-  ["fir-raw", "#f1d27a"],
+  ["fir-emscripten", "#ffcf70"],
+  ["fir-raw", "#ff7b72"],
 ]);
 
 class WorkerClient {
@@ -287,10 +286,10 @@ async function prepareBackend(id) {
   clients.set(id, client);
   const configuration = id === "vir"
     ? { ...info.runtime, entry: info.entry }
-    : id === "fir-native"
-      ? info.firNative
-      : id === "fir-raw"
-        ? info.firRaw
+    : id === "fir-raw"
+      ? info.firRaw
+      : id === "fir-emscripten"
+        ? info.firEmscripten
         : {};
   try {
     const preparation = await client.request("prepare", configuration);
@@ -328,10 +327,10 @@ function renderIdentity() {
       ["FIR raw Wasm", `${formatBytes(info.artifacts.firRaw.wasm.bytes)} · ${info.artifacts.firRaw.wasm.sha256.slice(0, 16)}…`],
     );
   }
-  if (info.artifacts.firNative !== null) {
+  if (info.artifacts.firEmscripten !== null) {
     values.push(
-      ["FIR stored control", `${info.artifacts.firNative.firCommit.slice(0, 12)} · level 0`],
-      ["FIR stored Wasm", `${formatBytes(info.artifacts.firNative.wasm.bytes)} · ${info.artifacts.firNative.wasm.sha256.slice(0, 16)}…`],
+      ["FIR C / Emscripten", `${info.artifacts.firEmscripten.firCommit.slice(0, 12)} · full Lean runtime`],
+      ["FIR C Wasm", `${formatBytes(info.artifacts.firEmscripten.wasm.byteLength)} · ${info.artifacts.firEmscripten.wasm.sha256.slice(0, 16)}…`],
     );
   }
   values.push(["fflate", `${formatBytes(info.artifacts.fflate.bytes)} · ${info.artifacts.fflate.sha256.slice(0, 16)}…`]);
@@ -528,7 +527,7 @@ async function runComparison() {
       }
     }
 
-    for (const id of ["vir", "fir-raw", "fir-native",
+    for (const id of ["vir", "fir-raw", "fir-emscripten",
       "compression-stream", "fflate"]) {
       if (!capabilityForRun(id, settings.level, input.byteLength).available) continue;
       elements.status.textContent = `${BACKENDS.find((backend) => backend.id === id).name} is running in its worker…`;
@@ -541,7 +540,7 @@ async function runComparison() {
         const result = { ...value, valid: validation.valid, exactNative, sha256: validation.sha256 };
         results.push(result);
         renderResult(result, input.byteLength);
-        if (["vir", "fir-native", "fir-raw"].includes(id)) {
+        if (["vir", "fir-raw", "fir-emscripten"].includes(id)) {
           renderRuntimePhases(result);
         }
         if (!validation.valid || exactNative === false) failed = true;

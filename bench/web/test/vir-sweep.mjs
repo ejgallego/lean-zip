@@ -22,7 +22,7 @@ const iterations = Number(take("--iterations", "1"));
 const outputPath = take("--out");
 
 if (!Number.isInteger(debugPort) || !Number.isFinite(timeoutMs) || timeoutMs <= 0 ||
-    !["vir", "fir-native", "fir-raw"].includes(backendId) ||
+    !["vir", "fir-raw", "fir-emscripten"].includes(backendId) ||
     ![1, 3, 5, 9].includes(samples) || ![0, 1, 3, 5, 10].includes(warmups) ||
     ![1, 3, 5, 10, 20].includes(iterations) ||
     cases.some((value) => !["editable", "repeated", "structured", "random", "zeros"]
@@ -175,12 +175,12 @@ async function runCase(kind, bytes, level) {
   if (backendId === "vir") {
     row.vir = candidate;
     row.ratios.virOverNative = row.ratios.candidateOverNative;
-  } else if (backendId === "fir-native") {
-    row.firNative = candidate;
-    row.ratios.firNativeOverNative = row.ratios.candidateOverNative;
-  } else {
+  } else if (backendId === "fir-raw") {
     row.firRaw = candidate;
     row.ratios.firRawOverNative = row.ratios.candidateOverNative;
+  } else {
+    row.firEmscripten = candidate;
+    row.ratios.firEmscriptenOverNative = row.ratios.candidateOverNative;
   }
   delete row.candidate;
   const ratio = row.ratios.candidateOverNative?.toFixed(1) ?? "—";

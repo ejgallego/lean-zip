@@ -16,8 +16,8 @@
     <p class="kicker">One stream. Verified runtime and native paths.</p>
     <h1>Compression,<br><em>under glass.</em></h1>
     <p class="lede">Run the production Lean raw-DEFLATE compressor beside browser-native and JavaScript
-      codecs. VIR uses the package-scoped interpreter runtime. FIR's stored control joins level 0,
-      while its production dispatcher covers levels 1 through 10. The superseded
+      codecs. VIR uses the package-scoped interpreter runtime. FIR's resident-native
+      and Lean C/Emscripten routes both run the production levels 1 through 10 dispatcher. The superseded
       per-call-cache VIR runtime is excluded. Outputs are independently inflated;
       matching Lean backends must also agree byte-for-byte.</p>
   </header>
@@ -69,7 +69,7 @@
         </label>
         <button id="run" type="button"><span>Run comparison</span><b>→</b></button>
       </div>
-      <p class="hint">VIR currently interprets Lean IR. FIR packages are zero-import native Wasm: a stored-DEFLATE control at level 0 and the production dispatcher at levels 1–10. FIR raw v2 populates lazy caches during its first workload call, reported separately from steady samples.</p>
+      <p class="hint">VIR currently interprets Lean IR. FIR native is zero-import resident Wasm; FIR C/Emscripten uses the full Lean runtime. Both call the same levels 1–10 production dispatcher. Initialization stays in setup, while each first workload call is reported separately from steady samples.</p>
     </section>
 
     <section class="results-section">
@@ -134,11 +134,11 @@
     <section class="method">
       <h2>Reading the numbers</h2>
       <div class="method-grid">
-        <p><b>Comparable Lean bytes.</b> Native Lean, VIR, and the applicable FIR lane use the same level and must emit exactly the same stream.</p>
+        <p><b>Comparable Lean bytes.</b> Native Lean, VIR, FIR native, and FIR C/Emscripten use the same level and must emit exactly the same stream.</p>
         <p><b>Independent codec settings.</b> CompressionStream has no level API; fflate caps its knob at 9. Their level labels are not quality equivalence claims.</p>
         <p><b>Timing boundaries.</b> Browser calls run in dedicated workers. Native samples are measured inside one Lean process; validation happens afterward.</p>
         <p><b>Supported VIR only.</b> VIR persists nullary constants for one loaded package set. The superseded per-call-cache runtime is not part of the dataset.</p>
-        <p><b>FIR scope.</b> The stored control isolates level-0 ByteArray/runtime behavior. The production dispatcher handles levels 1–10 through one artifact and one benchmark lane.</p>
+        <p><b>FIR scope.</b> FIR native exercises FIR's resident lowering. FIR C/Emscripten exercises Lean's C emitter, LLVM, and the full Lean runtime. Both expose levels 1–10.</p>
       </div>
     </section>
   </main>

@@ -18,8 +18,11 @@ import {
   validateNativeSampleReport,
 } from "../wasm/lib.mjs";
 import {
+  FIR_EMSCRIPTEN_PROFILE,
   FIR_PACKAGE_PROFILES,
+  firEmscriptenRequiredFiles,
   firPackageRequiredFiles,
+  validateFirEmscriptenMetadata,
   validateFirPackageMetadata,
 } from "./fir-package.mjs";
 
@@ -44,11 +47,9 @@ options:
   --native-bench PATH      default: .lake/build/bin/zip-wasm-bench-native
   --entry NAME             default: VirLeanZipAcceptance.compressRaw
   --vir-profile LABEL      artifact profile label (default: portable)
-  --fir-native-package PATH
-                           alias for --fir-stored-package
-  --fir-stored-package PATH
-                           optional immutable FIR stored-DEFLATE package directory
   --fir-raw-package PATH   optional immutable FIR levels 1-10 package directory
+  --fir-emscripten-package PATH
+                           optional FIR Lean-C/Emscripten levels 1-10 package
   --port N                 loopback port (default: 4173)
 `;
 
@@ -63,8 +64,8 @@ function parseArgs(argv) {
     nativeBench: join(repoRoot, ".lake/build/bin/zip-wasm-bench-native"),
     entry: "VirLeanZipAcceptance.compressRaw",
     virProfile: "portable",
-    firStoredPackage: null,
     firRawPackage: null,
+    firEmscriptenPackage: null,
     port: 4173,
   };
   const take = (index, option) => {
@@ -81,14 +82,11 @@ function parseArgs(argv) {
     else if (option === "--native-oracle") options.nativeOracle = resolve(take(index++, option));
     else if (option === "--native-bench") options.nativeBench = resolve(take(index++, option));
     else if (option === "--entry") options.entry = take(index++, option);
-    else if (option === "--fir-native-package" || option === "--fir-stored-package") {
-      if (options.firStoredPackage !== null) {
-        throw new Error("specify the FIR stored package only once");
-      }
-      options.firStoredPackage = resolve(take(index++, option));
-    }
     else if (option === "--fir-raw-package") {
       options.firRawPackage = resolve(take(index++, option));
+    }
+    else if (option === "--fir-emscripten-package") {
+      options.firEmscriptenPackage = resolve(take(index++, option));
     }
     else if (option === "--vir-profile") {
       options.virProfile = take(index++, option);
@@ -285,6 +283,44 @@ async function readFirPackage(directory, profile) {
   return { directory, files, build, descriptor, profile, wasmSha256 };
 }
 
+async function readFirEmscriptenPackage(directory) {
+  const profile = FIR_EMSCRIPTEN_PROFILE;
+  const names = firEmscriptenRequiredFiles();
+  const entries = await Promise.all(names.map(async (name) => [
+    name,
+    await readFile(join(directory, name)),
+  ]));
+  const files = new Map(entries);
+  const build = JSON.parse(files.get("BUILD.json").toString("utf8"));
+  const manifest = JSON.parse(files.get(profile.manifestFile).toString("utf8"));
+  validateFirEmscriptenMetadata(build, manifest);
+  const checksumNames = new Set();
+  for (const line of files.get("SHA256SUMS").toString("utf8").trim().split("\n")) {
+    const match = /^([0-9a-f]{64})  ([A-Za-z0-9._-]+)$/.exec(line);
+    if (match === null || match[2] === "SHA256SUMS" || checksumNames.has(match[2]) ||
+        !files.has(match[2]) || sha256(files.get(match[2])) !== match[1]) {
+      throw new Error(`FIR C/Emscripten package checksum mismatch: ${line}`);
+    }
+    checksumNames.add(match[2]);
+  }
+  for (const name of names) {
+    if (name !== "SHA256SUMS" && !checksumNames.has(name)) {
+      throw new Error(`FIR C/Emscripten package checksum is missing ${name}`);
+    }
+  }
+  for (const [kind, name] of [
+    ["module", profile.moduleFile],
+    ["wasm", profile.wasmFile],
+  ]) {
+    const expected = manifest.artifacts[kind];
+    const bytes = files.get(name);
+    if (bytes.byteLength !== expected.byteLength || sha256(bytes) !== expected.sha256) {
+      throw new Error(`FIR C/Emscripten ${kind} identity differs from its manifest`);
+    }
+  }
+  return { directory, files, build, manifest, profile };
+}
+
 function firBrowserConfig(value) {
   if (value === null) return null;
   const { build, profile } = value;
@@ -323,6 +359,38 @@ function firArtifactIdentity(value) {
       bytes: files.get(profile.wasmFile).byteLength,
       sha256: wasmSha256,
     },
+  };
+}
+
+function firEmscriptenBrowserConfig(value) {
+  if (value === null) return null;
+  const { manifest, profile } = value;
+  return {
+    adapterUrl: `/fir-c/${profile.adapterFile}`,
+    manifestUrl: `/fir-c/${profile.manifestFile}`,
+    factoryExport: profile.factoryExport,
+    operation: profile.operation,
+    expectedLevels: profile.levels,
+    sourceName: profile.sourceName,
+    artifactBytes: manifest.artifacts.module.byteLength +
+      manifest.artifacts.wasm.byteLength,
+  };
+}
+
+function firEmscriptenArtifactIdentity(value) {
+  if (value === null) return null;
+  const { build, directory, manifest, profile } = value;
+  return {
+    directory,
+    schemaVersion: build.schemaVersion,
+    firCommit: build.sources.fir.commit,
+    leanZipCommit: build.sources.leanZip.commit,
+    sourceName: profile.sourceName,
+    levels: profile.levels,
+    route: build.route,
+    fullLeanRuntime: build.runtime.fullLeanRuntime,
+    module: manifest.artifacts.module,
+    wasm: manifest.artifacts.wasm,
   };
 }
 
@@ -395,12 +463,12 @@ async function main() {
   ]);
   const wasmIdentity = { path: options.wasm, bytes: wasmBytes.byteLength, sha256: sha256(wasmBytes) };
   const packageUrls = packageInput.members.map((_, index) => `/artifacts/package-${index}.irpkg`);
-  const firNative = options.firStoredPackage === null
-    ? null
-    : await readFirPackage(options.firStoredPackage, FIR_PACKAGE_PROFILES.stored);
   const firRaw = options.firRawPackage === null
     ? null
     : await readFirPackage(options.firRawPackage, FIR_PACKAGE_PROFILES.raw);
+  const firEmscripten = options.firEmscriptenPackage === null
+    ? null
+    : await readFirEmscriptenPackage(options.firEmscriptenPackage);
   const info = {
     format: "lean-zip-web-comparison-info",
     version: 1,
@@ -429,8 +497,8 @@ async function main() {
         },
       },
     },
-    firNative: firBrowserConfig(firNative),
     firRaw: firBrowserConfig(firRaw),
+    firEmscripten: firEmscriptenBrowserConfig(firEmscripten),
     backends: [
       { id: "native", available: true },
       { id: "vir", available: true, profile: options.virProfile },
@@ -444,17 +512,13 @@ async function main() {
           : null,
       },
       {
-        id: "fir-native",
-        available: firNative !== null,
-        levels: [0],
-        reason: firNative === null
-          ? "FIR stored-control artifact not attached"
-          : null,
-      },
-      {
         id: "fir-emscripten",
-        available: false,
-        reason: "Awaiting FIR C/Emscripten bundle and HEAPU8 ByteArray adapter",
+        available: firEmscripten !== null,
+        levels: FIR_EMSCRIPTEN_PROFILE.levels,
+        maxInputBytes,
+        reason: firEmscripten === null
+          ? "FIR C/Emscripten artifact not attached"
+          : null,
       },
       { id: "compression-stream", available: true, availabilityCheckedInBrowser: true },
       { id: "fflate", available: true },
@@ -481,8 +545,8 @@ async function main() {
       nativeOracle,
       nativeBench,
       fflate: { path: fflatePath, bytes: fflateIdentity.bytes, sha256: fflateIdentity.sha256 },
-      firNative: firArtifactIdentity(firNative),
       firRaw: firArtifactIdentity(firRaw),
+      firEmscripten: firEmscriptenArtifactIdentity(firEmscripten),
     },
   };
 
@@ -502,10 +566,7 @@ async function main() {
         send(response, 200, bytes, mimeTypes.get(extname(path)) ?? "application/octet-stream");
       } else if (request.method === "GET" && url.pathname.startsWith("/fir/")) {
         const name = decodeURIComponent(url.pathname.slice(5));
-        const candidates = name === "lean-zip-byte-array-browser-adapter.mjs"
-          ? [firRaw, firNative]
-          : [firNative, firRaw];
-        const candidate = candidates.find(
+        const candidate = [firRaw].find(
           (value) => value !== null &&
             (value.profile.adapterFile === name ||
               value.profile.adapterImplementationFile === name ||
@@ -513,13 +574,20 @@ async function main() {
         );
         if (candidate === undefined) throw new Error("FIR adapter artifact is unavailable");
         send(response, 200, candidate.files.get(name), "text/javascript; charset=utf-8");
+      } else if (request.method === "GET" && url.pathname.startsWith("/fir-c/")) {
+        const name = decodeURIComponent(url.pathname.slice(7));
+        if (firEmscripten === null || !firEmscripten.files.has(name)) {
+          throw new Error("FIR C/Emscripten artifact is unavailable");
+        }
+        send(response, 200, firEmscripten.files.get(name),
+          mimeTypes.get(extname(name)) ?? "application/octet-stream");
       } else if (request.method === "GET" && url.pathname === "/vendor/fflate.mjs") {
         await sendFile(response, fflatePath);
       } else if (request.method === "GET" && url.pathname === "/artifacts/vir-upstream.wasm") {
         send(response, 200, wasmBytes, "application/wasm");
       } else if (request.method === "GET" && url.pathname.startsWith("/artifacts/lean-zip-")) {
         const name = decodeURIComponent(url.pathname.slice("/artifacts/".length));
-        const candidate = [firNative, firRaw].find(
+        const candidate = [firRaw].find(
           (value) => value !== null &&
             (value.profile.wasmFile === name || value.profile.descriptorFile === name),
         );
@@ -564,8 +632,8 @@ async function main() {
   server.listen(options.port, "127.0.0.1", () => {
     console.log(`lean-zip comparison lab: http://127.0.0.1:${options.port}/`);
     console.log(`VIR ${options.entry}; ${packageInput.members.length} package(s); Ctrl-C to stop`);
-    if (firNative !== null) console.log("FIR stored control: level 0");
     if (firRaw !== null) console.log("FIR native mode: production DEFLATE at levels 1-10");
+    if (firEmscripten !== null) console.log("FIR C/Emscripten: production DEFLATE at levels 1-10");
   });
 }
 

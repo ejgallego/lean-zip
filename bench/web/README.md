@@ -7,14 +7,13 @@ This loopback-only page compares one raw-DEFLATE input across:
 
 - native lean-zip, used as the byte-for-byte Lean reference;
 - lean-zip interpreted by VIR's package-scoped persistent-interpreter runtime;
-- FIR's zero-import resident-ByteArray stored control at Lean level 0;
-- an optional zero-import FIR production dispatcher at Lean levels 1–10;
+- FIR's zero-import resident production dispatcher at Lean levels 1–10;
+- the same dispatcher through FIR's Lean C/LLVM/Emscripten route and full Lean runtime;
 - the browser's `CompressionStream("deflate-raw")` implementation; and
 - pinned fflate JavaScript (`0.8.2`).
 
-It also reserves a capability row for FIR's deferred C/Emscripten bundle. A missing or level-inapplicable
-artifact is reported as unavailable, not silently substituted with another
-implementation.
+A missing or level-inapplicable artifact is reported as unavailable, not
+silently substituted with another implementation.
 
 ## Run it
 
@@ -37,21 +36,19 @@ npm run serve -- \
 ```
 
 Use landed VIR `main` as the sole VIR artifact and optionally attach FIR's
-immutable stored and production-dispatcher packages:
+immutable resident-native and C/Emscripten production packages:
 
 ```text
 npm run serve -- \
   --vir-root /path/to/vir \
   --package /path/to/lean-zip-acceptance.irpkg \
   --vir-profile client-native \
-  --fir-stored-package /path/to/lean-zip-stored-package \
-  --fir-raw-package /path/to/lean-zip-raw-package
+  --fir-raw-package /path/to/lean-zip-raw-package \
+  --fir-emscripten-package /path/to/lean-zip-emscripten-package
 ```
 
-`--fir-native-package` remains an alias for `--fir-stored-package`. Use
-`?level=0&autorun=1` for the FIR stored control. The raw package enables its own row for
-every level from 1 through 10. Each FIR row remains visible but
-level-inapplicable outside its advertised range.
+Both FIR packages enable their own row for every level from 1 through 10. Each
+row remains visible but level-inapplicable outside its advertised range.
 
 The page also has deterministic exact-size inputs: repeated text, structured
 records, seeded random bytes, and zero bytes. Query parameters such as
@@ -102,11 +99,12 @@ the sweep. Three excluded warmups are used by default so V8 tier-up does not
 pollute the measured median. `--cases`, `--sizes`, `--levels`, `--samples`,
 `--warmups`, and `--iterations` accept comma-separated overrides.
 
-The same driver benchmarks the currently admitted FIR-native stored slice at
-level 0 while retaining the adapter's encode/execute/decode phases:
+The same driver benchmarks FIR C/Emscripten while retaining the adapter's
+encode/execute/decode phases:
 
 ```text
-npm run bench:fir -- --debug-port 9223 --out /tmp/lean-zip-fir-stored-sweep.json
+npm run bench:fir-c -- --levels 1,6,10 \
+  --debug-port 9223 --out /tmp/lean-zip-fir-emscripten-sweep.json
 ```
 
 The production FIR dispatcher sweep is:
@@ -168,16 +166,15 @@ server is the explicit artifact switch.
 
 The FIR rows represent distinct deliverables:
 
-1. **FIR C / Emscripten** remains disabled. It needs a browser-loadable module
-   plus a stable `HEAPU8` adapter for binary-safe `ByteArray` input and output.
-2. **FIR stored control** is admitted at level 0. It isolates resident
-   ByteArray, allocator, and boundary behavior; it is not a compressed-level
-   implementation.
-3. **FIR native · levels 1–10** is the sole FIR production-compression lane.
+1. **FIR native · levels 1–10** exercises FIR's zero-import resident lowering.
    Its immutable package has a complete validator, browser adapter, worker
    lane, and level-aware call ABI. The exact zero-import module passes the full
    5-case × 10-level native-byte/inflate gate. Lazy cache publication remains
    part of the honest first workload call.
+2. **FIR C / Emscripten · levels 1–10** calls the identical Lean dispatcher
+   through final LCNF, Lean C, LLVM, and Emscripten. Its manifest-verified ES
+   module links the pinned full Lean runtime; a narrow `HEAPU8` bridge copies
+   ordinary Lean `ByteArray` input and output at the browser boundary.
 
 The raw package adds `lean-zip-raw-browser-adapter.mjs`,
 `standard-math-runtime-contract.mjs`, `lean-zip-raw.wasm`, and its descriptor.

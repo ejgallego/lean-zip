@@ -69,20 +69,11 @@ export const BACKENDS = Object.freeze([
       : "production DEFLATE · levels 1–10",
   },
   {
-    id: "fir-native",
-    name: "FIR stored control",
-    family: "lean-zip",
-    execution: "browser WebAssembly",
-    setting: (level) => level === 0
-      ? "stored DEFLATE control · Lean level 0"
-      : "stored DEFLATE control · level 0 only",
-  },
-  {
     id: "fir-emscripten",
     name: "FIR C / Emscripten",
     family: "lean-zip",
     execution: "browser WebAssembly",
-    setting: (level) => `lean-zip level ${level}`,
+    setting: (level) => `Lean C/Emscripten · level ${level}`,
   },
   {
     id: "compression-stream",
@@ -201,7 +192,7 @@ export function makeReport({ info, source, settings, results, diagnostics = null
       "Correctness validation and report rendering are outside timed regions.",
       "Native Lean samples exclude process startup; browser samples run in dedicated workers.",
       "Focused VIR diagnostics do not replace or modify the production compressor lane.",
-      "The FIR stored control is capability-gated at level 0; the production FIR dispatcher covers levels 1 through 10.",
+      "FIR-native and FIR C/Emscripten call the same production levels 1 through 10 dispatcher through different Wasm routes.",
     ],
   };
 }

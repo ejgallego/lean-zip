@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  FIR_EMSCRIPTEN_PROFILE,
   FIR_PACKAGE_PROFILES,
+  firEmscriptenRequiredFiles,
   firPackageRequiredFiles,
+  validateFirEmscriptenMetadata,
   validateFirPackageMetadata,
 } from "../fir-package.mjs";
 
@@ -135,10 +138,44 @@ test("raw FIR profile advertises the production levels 1 through 10", () => {
     }, descriptor), /lazy-cache rewind contract/);
 });
 
-test("stored and raw FIR profiles have disjoint immutable package names", () => {
-  const stored = FIR_PACKAGE_PROFILES.stored;
-  const raw = FIR_PACKAGE_PROFILES.raw;
-  assert.notEqual(stored.backendId, raw.backendId);
-  assert.notEqual(stored.adapterFile, raw.adapterFile);
-  assert.notEqual(stored.wasmFile, raw.wasmFile);
+test("FIR C/Emscripten profile pins the full-runtime transfer contract", () => {
+  const profile = FIR_EMSCRIPTEN_PROFILE;
+  const build = {
+    schemaVersion: profile.schemaVersion,
+    entry: { sourceName: profile.sourceName, levels: [...profile.levels] },
+    runtime: { fullLeanRuntime: true, threads: true, heapView: true },
+  };
+  const manifest = {
+    schemaVersion: 1,
+    profile: "emscripten",
+    runtime: { threads: true },
+    abi: {
+      exports: [
+        "fir_lean_zip_c_input_alloc",
+        "fir_lean_zip_c_compress",
+        "fir_lean_zip_c_result_ptr",
+        "fir_lean_zip_c_result_len",
+        "fir_lean_zip_c_release",
+      ],
+      runtimeMethods: ["HEAPU8"],
+    },
+    artifacts: {
+      module: { file: profile.moduleFile },
+      wasm: { file: profile.wasmFile },
+    },
+  };
+  assert.equal(validateFirEmscriptenMetadata(build, manifest), profile);
+  assert.deepEqual(firEmscriptenRequiredFiles(), [
+    "BUILD.json",
+    "SHA256SUMS",
+    "emscripten-loader.mjs",
+    "lean-zip-emscripten-adapter.mjs",
+    "lean-zip-emscripten.manifest.json",
+    "lean-zip-emscripten.mjs",
+    "lean-zip-emscripten.wasm",
+  ]);
+  assert.throws(() => validateFirEmscriptenMetadata(
+    { ...build, runtime: { ...build.runtime, fullLeanRuntime: false } },
+    manifest,
+  ), /full threaded Lean runtime/);
 });

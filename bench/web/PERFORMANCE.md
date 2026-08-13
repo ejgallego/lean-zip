@@ -18,12 +18,12 @@ are excluded.
   `fbfda2cca0fb63ac69ffc43fbdd29ef107fa7807bdedce59f94a91fdcd5835df`
 - VIR package input: 1,151,430 bytes,
   `3f3db6f2a75085f193e8dbe569d8b8ac53dceb9a789e2ef641df6665a711c1d7`
-- FIR stored benchmark producer: FIR `b25bf331`, lean-zip `30737b4e`
-- FIR stored Wasm: 12,868 bytes,
-  `3f36c0d334a6768ef183bbef1cce3eb60dd3ce1c4c5256dbec3d780a3e7daedb`
 - FIR production-dispatcher producer: FIR `1d79658d`, lean-zip `30737b4e`
 - FIR production levels 1–10 Wasm: 1,753,310 bytes,
   `0686e69684c187b1b14415f0f3b88fe4ce28514c97f8aac003fbd7359f15b838`
+- FIR C/Emscripten producer: FIR `515bf401`, lean-zip `5c27bbd0`
+- FIR C/Emscripten Wasm: 2,346,345 bytes,
+  `8a37e8c76883c29c04b2e764482c62ec303344129b547b1f6a150a74a0c9ec7f`
 
 ## VIR compressed levels
 
@@ -116,75 +116,6 @@ its identity/report packet is
 `91d801c40b492938e65c7a22d2bd840fb4c0a975dbc17d015c31dc28475ad05e`.
 Profiled elapsed values are not headline timings.
 
-## Stored level: FIR-native and VIR
-
-The stronger stored runs use nine samples, ten excluded warmups, and twenty
-iterations per sample on 1 MiB of seeded random bytes. Content should not
-affect stored DEFLATE; random bytes make the source identity explicit.
-
-| backend | median wall | throughput | execution share | relative MAD |
-| --- | ---: | ---: | ---: | ---: |
-| FIR stored control | 5.87 ms | 170 MiB/s | 79% | 16% |
-| VIR stored | 1.34 ms | 748 MiB/s | 40% | 17% |
-
-![Horizontal bars comparing 170 MiB/s FIR native stored throughput with 748 MiB/s VIR stored throughput](assets/stored-throughput.svg)
-
-The relatively large dispersion is reported rather than hidden: garbage
-collection, CPU scheduling, and browser tiering still affect this local page.
-Independent clean passes placed FIR around 4.6–5.9 ms (170–216 MiB/s); the
-landed VIR pass had clean samples from 1.1–2.8 ms. A controlled campaign needs
-multiple order-balanced browser-process passes before release claims.
-
-At 1 MiB, the displayed FIR run's median phase split was 0.287 ms encode,
-4.616 ms execute, and 0.753 ms decode. Its 11.8 KiB package prepared in
-11.6 ms, versus 90.2 ms for VIR's 1.89 MiB runtime plus package in that run.
-FIR therefore has a much smaller deployment/startup surface, while VIR's
-mature resident runtime is substantially faster once loaded. This setup
-comparison is descriptive, not apples-to-apples: FIR is a specialized module
-and VIR is a general IR interpreter.
-
-FIR memory grows from 1 to 335 pages on the first 1 MiB input and then remains
-at 335 pages across warmups and samples. The measured scratch frontier grows by
-21,899,688 bytes and rewinds to 1,024 after every call, so this is retained
-linear-memory capacity rather than a per-call leak. This roughly 20.9x peak
-temporary-footprint multiplier is the clearest FIR optimization lead.
-
-A fresh landed-artifact frontier sweep made the scaling mechanism explicit.
-Each row used a fresh worker, three excluded warmups, three samples, seeded
-random input, and the same exact-native/inflate gates. The peak frontier was
-identical on the first call, every warmup, and every sample; every call rewound
-to 1,024 bytes.
-
-| input | stored blocks | scratch growth | growth / input | retained pages |
-| ---: | ---: | ---: | ---: | ---: |
-| 1 KiB | 1 | 4,624 B | 4.52x | 1 |
-| 16 KiB | 1 | 66,064 B | 4.03x | 2 |
-| 64 KiB | 2 | 263,168 B | 4.02x | 5 |
-| 256 KiB | 5 | 2,230,960 B | 8.51x | 35 |
-| 1 MiB | 17 | 21,899,688 B | 20.89x | 335 |
-
-![Line chart showing FIR scratch growth rising from about four times input size through 64 KiB to 20.89 times at one MiB](assets/fir-scratch-frontier.svg)
-
-This is not a FIR leak or an unexplained allocator constant. The production
-stored root calls recursive `deflateStoredPure`. Each level materializes a
-slice and appends the already-built remaining stream. Compiled
-`ByteArray.append` uses `ByteArray.copySlice` with geometric capacity growth.
-FIR's resident helper correctly reuses a unique destination when it fits and
-releases a consumed destination after growth, but its per-call bump arena does
-not reuse that dead region before the final rewind. Intermediate suffix-sized
-arrays therefore accumulate, making peak scratch proportional to input bytes
-times the number of 65,535-byte stored blocks.
-
-The cleanest experiment is application-side but backend-neutral: compile the
-existing iterative `Zip.Native.Deflate.deflateStored` as a diagnostic root and
-compare it with `deflateStoredPure`. If its unique accumulator yields linear
-FIR scratch while retaining exact bytes, prove their equality and use the
-iterative implementation behind the verified production specification. A FIR
-free-list or mid-call arena compaction is a broader alternative, but it should
-not be the first fix for this source shape. The fresh frontier packet is
-`/tmp/lean-zip-fir-stored-frontier-current.json`, SHA-256
-`3beb87b64378a7c146d7fb2b17d891610bcfade5e6499d0488c12058eb65e6af`.
-
 ## FIR production levels 1–10
 
 The sole FIR compressed-level lane is the production `compressRaw` dispatcher.
@@ -212,19 +143,62 @@ Execution accounts for 98.7–99.7% of FIR's steady call. Lazy constants remain
 lazy and their publication is included in the first workload call; the demo
 does not prime or shift that cost into setup.
 
+## FIR C/Emscripten baseline
+
+The comparison lab now has a second production FIR route. It takes FIR's final
+LCNF through Lean C, LLVM, and Emscripten, links the full Lean runtime, and
+calls the same `Zip.Wasm.compressRaw` entry as FIR native. It is therefore a
+useful code-generation baseline, not another compressor implementation.
+
+The package gate made 40 Node calls (four inputs at every level 1–10). A real
+Chrome sweep then made 27 measured cells over three input families, three
+sizes, and levels 1/6/10. Every call emitted exactly the native lean-zip bytes
+and passed independent raw-DEFLATE inflation.
+
+Representative 64 KiB medians from three samples after one excluded warmup:
+
+| input | level | native | FIR C/Emscripten | ratio |
+| --- | ---: | ---: | ---: | ---: |
+| repeated text | 1 | 0.156 ms | 0.600 ms | 3.8x |
+| repeated text | 6 | 0.673 ms | 1.105 ms | 1.6x |
+| repeated text | 10 | 8.571 ms | 18.395 ms | 2.1x |
+| structured records | 1 | 0.190 ms | 0.835 ms | 4.4x |
+| structured records | 6 | 1.099 ms | 3.360 ms | 3.1x |
+| structured records | 10 | 7.070 ms | 21.565 ms | 3.1x |
+| seeded random | 1 | 1.129 ms | 3.080 ms | 2.7x |
+| seeded random | 6 | 3.257 ms | 7.885 ms | 2.4x |
+| seeded random | 10 | 20.995 ms | 43.870 ms | 2.1x |
+
+The runtime executes 94.7–99.7% of the steady timed call in these cells, so
+browser boundary copies are not the leading cost. The first workload call is
+reported separately and includes ordinary Lean lazy-constant work; module
+acquisition and full-runtime initialization remain in preparation.
+
+Whole-program LTO initially exposed a real ABI mismatch: Lean-generated C
+declares the final `Bool` argument of `lean_byte_array_copy_slice` as `uint8_t`,
+while the C++ runtime defines it as `bool`. Those become LLVM `i8` and `i1`, and
+LTO optimized the `ByteArray.extract` path to `unreachable`. The local package
+uses a narrow generated-C-compatible bridge for `copySlice` and `extract`.
+This bridge only repairs the runtime ABI; compression remains the unmodified
+Lean production routine. It should be removed once the shared runtime exposes
+a matching entry point.
+
+The browser sweep packet is
+`/tmp/lean-zip-fir-emscripten-sweep.json`, SHA-256
+`86270322902d3e9e4a341ccc6a126968d6324d9ce35849cf1e3120a6479658ad`.
+
 ## Next measurements
 
-1. Run the production FIR dispatcher across 1–256 KiB and levels 1–10 to
-   establish its post-Array-fix scaling curve.
-2. Profile the production dispatcher to identify the next steady runtime
+1. Run FIR native and FIR C/Emscripten in one order-balanced sweep across
+   1–256 KiB and levels 1–10, retaining raw first-call and steady samples.
+2. Profile the FIR native dispatcher to identify the next steady runtime
    hotspot without reintroducing a specialized compressor root.
 3. Ask VIR to screen an interpreter-call-site symbol-resolution cache or
    equivalent resolved-call representation against the existing symbolized
    profile; accept only with a fresh profile and order-balanced representative
    runs.
-4. Add an iterative stored diagnostic root, measure its FIR frontier against
-   the recursive root, and pursue a proof-backed production substitution only
-   if the predicted linear scratch behavior appears.
+4. Upstream or otherwise centralize the generated-C/runtime `Bool` ABI bridge,
+   then rebuild the FIR C lane without source rewriting.
 
 Local evidence packets used for this note were written under `/tmp` by
 `npm run bench:vir` and `npm run bench:fir`; the commands and JSON schema are

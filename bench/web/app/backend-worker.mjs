@@ -245,11 +245,70 @@ async function prepareFirNative(config) {
   };
 }
 
+async function prepareFirEmscripten(config) {
+  const prepareStarted = performance.now();
+  let started = prepareStarted;
+  const adapterModule = await import(config.adapterUrl);
+  const acquireMs = performance.now() - started;
+  const loadAdapter = adapterModule[config.factoryExport];
+  if (typeof loadAdapter !== "function") {
+    throw new Error(`FIR C/Emscripten adapter does not export ${config.factoryExport}`);
+  }
+  started = performance.now();
+  const adapter = await loadAdapter(new URL(config.manifestUrl, self.location.href));
+  const packageLoadMs = performance.now() - started;
+  if (typeof adapter?.[config.operation] !== "function" ||
+      !Number.isFinite(adapter.memoryPages)) {
+    throw new Error(`FIR C/Emscripten adapter does not implement ${config.operation}`);
+  }
+  let memoryPages = adapter.memoryPages;
+  const call = (input, level) => {
+    if (!config.expectedLevels.includes(level)) {
+      throw new Error(`${config.sourceName} does not support Lean level ${level}`);
+    }
+    const result = requireFirResult(adapter[config.operation](input, level),
+      config.sourceName);
+    memoryPages = result.memory.pages;
+    return result;
+  };
+  return {
+    artifactBytes: config.artifactBytes,
+    profile: "lean-c-emscripten-full-runtime",
+    compress: (input, level) => call(input, level).bytes,
+    compressTimed: (input, level) => {
+      const result = call(input, level);
+      return {
+        value: result.bytes,
+        timings: {
+          marshalMs: result.timings.encodeMs,
+          executeMs: result.timings.executeMs,
+          decodeMs: result.timings.decodeMs,
+          hostMs: 0,
+          totalMs: result.timings.totalMs,
+        },
+        details: { fullLeanRuntime: true },
+      };
+    },
+    preparePhases: {
+      acquireMs,
+      compileMs: 0,
+      instantiateMs: 0,
+      initializeMs: 0,
+      packageLoadMs,
+      totalMs: performance.now() - prepareStarted,
+    },
+    memory: () => memoryPages,
+  };
+}
+
 async function prepare(config) {
   const started = performance.now();
   if (backendId === "vir") prepared = await prepareVir(config);
-  else if (["fir-native", "fir-raw"].includes(backendId)) {
+  else if (backendId === "fir-raw") {
     prepared = await prepareFirNative(config);
+  }
+  else if (backendId === "fir-emscripten") {
+    prepared = await prepareFirEmscripten(config);
   }
   else if (backendId === "compression-stream") prepared = await prepareCompressionStream();
   else if (backendId === "fflate") prepared = await prepareFflate();

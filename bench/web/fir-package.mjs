@@ -1,22 +1,4 @@
 export const FIR_PACKAGE_PROFILES = Object.freeze({
-  stored: Object.freeze({
-    id: "stored",
-    backendId: "fir-native",
-    level: 0,
-    schemaVersion: "fir.lean-zip.stored.build/v1",
-    sourceName: "Zip.Wasm.compressStored",
-    adapterApiVersion: "fir.lean-zip.stored.browser/v1",
-    adapterFile: "lean-zip-stored-browser-adapter.mjs",
-    adapterImplementationFile: "lean-zip-byte-array-browser-adapter.mjs",
-    factoryExport: "createLeanZipStoredAdapter",
-    operation: "compressStored",
-    wasmFile: "lean-zip-stored.wasm",
-    descriptorFile: "lean-zip-stored.wasm.json",
-    smokeFile: "smoke.mjs",
-    profile: "resident-bytearray-v2",
-    persistentInitializer: null,
-    levels: Object.freeze([0]),
-  }),
   raw: Object.freeze({
     id: "raw",
     backendId: "fir-raw",
@@ -36,6 +18,21 @@ export const FIR_PACKAGE_PROFILES = Object.freeze({
     persistentInitializer: null,
     levels: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
   }),
+});
+
+export const FIR_EMSCRIPTEN_PROFILE = Object.freeze({
+  id: "emscripten",
+  backendId: "fir-emscripten",
+  schemaVersion: "fir.lean-zip.emscripten.build/v1",
+  sourceName: "Zip.Wasm.compressRaw",
+  adapterFile: "lean-zip-emscripten-adapter.mjs",
+  adapterLoaderFile: "emscripten-loader.mjs",
+  factoryExport: "loadLeanZipEmscriptenAdapter",
+  operation: "compressRaw",
+  manifestFile: "lean-zip-emscripten.manifest.json",
+  moduleFile: "lean-zip-emscripten.mjs",
+  wasmFile: "lean-zip-emscripten.wasm",
+  levels: Object.freeze([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
 });
 
 function requireCondition(condition, message) {
@@ -137,5 +134,51 @@ export function validateFirPackageMetadata(profile, build, descriptor) {
         JSON.stringify(expectedMathDeclarations),
     "FIR raw descriptor omits its standard-math runtime contract");
   }
+  return profile;
+}
+
+export function firEmscriptenRequiredFiles() {
+  const profile = FIR_EMSCRIPTEN_PROFILE;
+  return [
+    "BUILD.json",
+    "SHA256SUMS",
+    profile.adapterLoaderFile,
+    profile.adapterFile,
+    profile.manifestFile,
+    profile.moduleFile,
+    profile.wasmFile,
+  ];
+}
+
+export function validateFirEmscriptenMetadata(build, manifest) {
+  const profile = FIR_EMSCRIPTEN_PROFILE;
+  requireObject(build, "FIR C/Emscripten BUILD.json");
+  requireObject(manifest, "FIR C/Emscripten manifest");
+  requireCondition(build.schemaVersion === profile.schemaVersion,
+    `unsupported FIR C/Emscripten package schema: ${build.schemaVersion}`);
+  requireCondition(build.entry?.sourceName === profile.sourceName &&
+    Array.isArray(build.entry.levels) &&
+    JSON.stringify(build.entry.levels) === JSON.stringify(profile.levels),
+  "FIR C/Emscripten package has an unsupported entry or level set");
+  requireCondition(build.runtime?.fullLeanRuntime === true &&
+    build.runtime.threads === true && build.runtime.heapView === true,
+  "FIR C/Emscripten package does not identify its full threaded Lean runtime");
+  requireCondition(manifest.schemaVersion === 1 &&
+    manifest.profile === "emscripten" && manifest.runtime?.threads === true,
+  "FIR C/Emscripten manifest has an unsupported runtime profile");
+  const requiredExports = [
+    "fir_lean_zip_c_input_alloc",
+    "fir_lean_zip_c_compress",
+    "fir_lean_zip_c_result_ptr",
+    "fir_lean_zip_c_result_len",
+    "fir_lean_zip_c_release",
+  ];
+  requireCondition(JSON.stringify(manifest.abi?.exports) ===
+    JSON.stringify(requiredExports) &&
+    manifest.abi?.runtimeMethods?.includes("HEAPU8"),
+  "FIR C/Emscripten manifest has an unsupported transfer ABI");
+  requireCondition(manifest.artifacts?.module?.file === profile.moduleFile &&
+    manifest.artifacts?.wasm?.file === profile.wasmFile,
+  "FIR C/Emscripten manifest has unexpected artifact names");
   return profile;
 }
