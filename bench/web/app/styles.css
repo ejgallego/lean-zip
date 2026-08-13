@@ -51,7 +51,9 @@ textarea:focus { border-color: var(--acid); }
 #input-size { margin-left: auto; font-family: ui-monospace, monospace; }
 .controls { display: grid; grid-template-columns: 1.4fr 1fr .7fr .7fr .7fr 1fr 1.5fr; gap: 14px; align-items: end; margin-top: 20px; }
 .controls label { display: grid; gap: 8px; color: var(--muted); font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
+.controls label.irrelevant { opacity: .38; }
 select { width: 100%; min-height: 50px; border: 1px solid var(--line); border-radius: 0; padding: 0 14px; color: var(--ink); background: #0d0f0d; }
+select:disabled { color: #777b73; background: #151715; cursor: not-allowed; }
 button { min-height: 50px; border: 1px solid var(--acid); padding: 0 22px; background: var(--acid); color: #11170a; font-weight: 760; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 button:hover { background: #d8ff89; }
 button:disabled { opacity: .45; cursor: wait; }

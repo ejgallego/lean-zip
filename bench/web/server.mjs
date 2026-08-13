@@ -434,21 +434,6 @@ async function main() {
     backends: [
       { id: "native", available: true },
       { id: "vir", available: true, profile: options.virProfile },
-      { id: "compression-stream", available: true, availabilityCheckedInBrowser: true },
-      { id: "fflate", available: true },
-      {
-        id: "fir-emscripten",
-        available: false,
-        reason: "Awaiting FIR C/Emscripten bundle and HEAPU8 ByteArray adapter",
-      },
-      {
-        id: "fir-native",
-        available: firNative !== null,
-        levels: [0],
-        reason: firNative === null
-          ? "FIR-native stored artifact not attached"
-          : null,
-      },
       {
         id: "fir-raw",
         available: firRaw !== null,
@@ -458,6 +443,21 @@ async function main() {
           ? "FIR-native levels 1-10 artifact not attached"
           : null,
       },
+      {
+        id: "fir-native",
+        available: firNative !== null,
+        levels: [0],
+        reason: firNative === null
+          ? "FIR stored-control artifact not attached"
+          : null,
+      },
+      {
+        id: "fir-emscripten",
+        available: false,
+        reason: "Awaiting FIR C/Emscripten bundle and HEAPU8 ByteArray adapter",
+      },
+      { id: "compression-stream", available: true, availabilityCheckedInBrowser: true },
+      { id: "fflate", available: true },
     ],
     repositories: {
       leanZip: gitIdentity(repoRoot),
@@ -564,7 +564,7 @@ async function main() {
   server.listen(options.port, "127.0.0.1", () => {
     console.log(`lean-zip comparison lab: http://127.0.0.1:${options.port}/`);
     console.log(`VIR ${options.entry}; ${packageInput.members.length} package(s); Ctrl-C to stop`);
-    if (firNative !== null) console.log("FIR native mode: stored DEFLATE at level 0");
+    if (firNative !== null) console.log("FIR stored control: level 0");
     if (firRaw !== null) console.log("FIR native mode: production DEFLATE at levels 1-10");
   });
 }

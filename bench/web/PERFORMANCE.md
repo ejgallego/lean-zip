@@ -124,7 +124,7 @@ affect stored DEFLATE; random bytes make the source identity explicit.
 
 | backend | median wall | throughput | execution share | relative MAD |
 | --- | ---: | ---: | ---: | ---: |
-| FIR native stored | 5.87 ms | 170 MiB/s | 79% | 16% |
+| FIR stored control | 5.87 ms | 170 MiB/s | 79% | 16% |
 | VIR stored | 1.34 ms | 748 MiB/s | 40% | 17% |
 
 ![Horizontal bars comparing 170 MiB/s FIR native stored throughput with 748 MiB/s VIR stored throughput](assets/stored-throughput.svg)

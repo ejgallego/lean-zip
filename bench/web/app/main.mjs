@@ -244,6 +244,7 @@ async function sourceBytes() {
 
 function applyPreset() {
   const kind = elements.preset.value;
+  syncPresetControls();
   if (kind === "custom") {
     generatedInput = null;
     generatedName = null;
@@ -258,6 +259,12 @@ function applyPreset() {
   }
   updateInputSize();
   clearDiagnostic();
+}
+
+function syncPresetControls() {
+  const irrelevant = elements.preset.value === "custom";
+  elements["preset-size"].disabled = irrelevant;
+  elements["preset-size"].closest("label")?.classList.toggle("irrelevant", irrelevant);
 }
 
 function currentSettings() {
@@ -314,20 +321,20 @@ function renderIdentity() {
     ["VIR Wasm", `${formatBytes(info.artifacts.virWasm.bytes)} · ${info.artifacts.virWasm.sha256.slice(0, 16)}…`],
     ["IR package", `${info.artifacts.virPackageInput.members.length} member(s) · ${info.artifacts.virPackageInput.sha256.slice(0, 16)}…`],
     ["VIR stage profiles", "production acceptance package"],
-    ["fflate", `${formatBytes(info.artifacts.fflate.bytes)} · ${info.artifacts.fflate.sha256.slice(0, 16)}…`],
   ];
-  if (info.artifacts.firNative !== null) {
-    values.push(
-      ["FIR native", `${info.artifacts.firNative.firCommit.slice(0, 12)} · stored level 0`],
-      ["FIR Wasm", `${formatBytes(info.artifacts.firNative.wasm.bytes)} · ${info.artifacts.firNative.wasm.sha256.slice(0, 16)}…`],
-    );
-  }
   if (info.artifacts.firRaw !== null) {
     values.push(
       ["FIR levels 1–10", `${info.artifacts.firRaw.firCommit.slice(0, 12)} · production dispatcher`],
       ["FIR raw Wasm", `${formatBytes(info.artifacts.firRaw.wasm.bytes)} · ${info.artifacts.firRaw.wasm.sha256.slice(0, 16)}…`],
     );
   }
+  if (info.artifacts.firNative !== null) {
+    values.push(
+      ["FIR stored control", `${info.artifacts.firNative.firCommit.slice(0, 12)} · level 0`],
+      ["FIR stored Wasm", `${formatBytes(info.artifacts.firNative.wasm.bytes)} · ${info.artifacts.firNative.wasm.sha256.slice(0, 16)}…`],
+    );
+  }
+  values.push(["fflate", `${formatBytes(info.artifacts.fflate.bytes)} · ${info.artifacts.fflate.sha256.slice(0, 16)}…`]);
   elements.identity.replaceChildren();
   for (const [term, description] of values) {
     const dt = document.createElement("dt");
@@ -521,7 +528,7 @@ async function runComparison() {
       }
     }
 
-    for (const id of ["vir", "fir-native", "fir-raw",
+    for (const id of ["vir", "fir-raw", "fir-native",
       "compression-stream", "fflate"]) {
       if (!capabilityForRun(id, settings.level, input.byteLength).available) continue;
       elements.status.textContent = `${BACKENDS.find((backend) => backend.id === id).name} is running in its worker…`;
@@ -594,6 +601,7 @@ async function initialize() {
     generatedInput = null;
     generatedName = null;
     elements.preset.value = "custom";
+    syncPresetControls();
     elements.file.value = "";
     elements["source-label"].textContent = "text input";
     updateInputSize();
@@ -604,6 +612,7 @@ async function initialize() {
     generatedInput = null;
     generatedName = null;
     elements.preset.value = "custom";
+    syncPresetControls();
     elements["source-label"].textContent = selectedFile?.name ?? "text input";
     updateInputSize();
     clearDiagnostic();
@@ -625,6 +634,7 @@ async function initialize() {
   elements.run.addEventListener("click", runComparison);
   elements["diagnostic-run"].addEventListener("click", runVirDiagnostic);
   elements.export.addEventListener("click", exportReport);
+  syncPresetControls();
   updateInputSize();
   try {
     info = await responseJson(await fetch("/api/info", { cache: "no-store" }));
@@ -653,6 +663,7 @@ async function initialize() {
         elements.file.value = "";
         elements["source-label"].textContent =
           `${BENCHMARK_INPUTS.find((item) => item.id === requestedInput).name} · generated`;
+        syncPresetControls();
         updateInputSize();
       }
     }

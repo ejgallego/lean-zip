@@ -1,6 +1,6 @@
 # Vir/FIR WASM port plan
 
-Status: native/VIR, FIR stored, and the FIR production levels 1–10 dispatcher
+Status: native/VIR, the FIR stored control, and the FIR production levels 1–10 dispatcher
 are integrated. The constant-time resident Array repair is accepted on FIR
 main, and the comparison lab admits its clean immutable package.
 

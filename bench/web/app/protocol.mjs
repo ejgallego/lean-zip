@@ -60,6 +60,31 @@ export const BACKENDS = Object.freeze([
     setting: (level) => `lean-zip level ${level}`,
   },
   {
+    id: "fir-raw",
+    name: "FIR native · levels 1–10",
+    family: "lean-zip",
+    execution: "browser WebAssembly",
+    setting: (level) => level >= 1 && level <= 10
+      ? `production DEFLATE · Lean level ${level}`
+      : "production DEFLATE · levels 1–10",
+  },
+  {
+    id: "fir-native",
+    name: "FIR stored control",
+    family: "lean-zip",
+    execution: "browser WebAssembly",
+    setting: (level) => level === 0
+      ? "stored DEFLATE control · Lean level 0"
+      : "stored DEFLATE control · level 0 only",
+  },
+  {
+    id: "fir-emscripten",
+    name: "FIR C / Emscripten",
+    family: "lean-zip",
+    execution: "browser WebAssembly",
+    setting: (level) => `lean-zip level ${level}`,
+  },
+  {
     id: "compression-stream",
     name: "CompressionStream",
     family: "browser-native",
@@ -72,31 +97,6 @@ export const BACKENDS = Object.freeze([
     family: "javascript",
     execution: "browser JavaScript",
     setting: (level) => `fflate level ${Math.min(level, 9)}`,
-  },
-  {
-    id: "fir-emscripten",
-    name: "FIR C / Emscripten",
-    family: "lean-zip",
-    execution: "browser WebAssembly",
-    setting: (level) => `lean-zip level ${level}`,
-  },
-  {
-    id: "fir-native",
-    name: "FIR native · stored",
-    family: "lean-zip",
-    execution: "browser WebAssembly",
-    setting: (level) => level === 0
-      ? "stored DEFLATE · Lean level 0"
-      : "stored DEFLATE · level 0 only",
-  },
-  {
-    id: "fir-raw",
-    name: "FIR native · levels 1–10",
-    family: "lean-zip",
-    execution: "browser WebAssembly",
-    setting: (level) => level >= 1 && level <= 10
-      ? `production DEFLATE · Lean level ${level}`
-      : "production DEFLATE · levels 1–10",
   },
 ]);
 
@@ -201,7 +201,7 @@ export function makeReport({ info, source, settings, results, diagnostics = null
       "Correctness validation and report rendering are outside timed regions.",
       "Native Lean samples exclude process startup; browser samples run in dedicated workers.",
       "Focused VIR diagnostics do not replace or modify the production compressor lane.",
-      "FIR stored is capability-gated at level 0; the production FIR dispatcher covers levels 1 through 10.",
+      "The FIR stored control is capability-gated at level 0; the production FIR dispatcher covers levels 1 through 10.",
     ],
   };
 }
