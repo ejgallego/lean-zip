@@ -6,7 +6,7 @@
   "scripts": {
     "serve": "node server.mjs",
     "bench:fir": "node test/vir-sweep.mjs --backend fir-native --levels 0",
-    "bench:fir-level1": "node test/vir-sweep.mjs --backend fir-level1 --levels 1",
+    "bench:fir-raw": "node test/vir-sweep.mjs --backend fir-raw",
     "bench:vir": "node test/vir-sweep.mjs",
     "test": "node --test test/*.test.mjs"
   },

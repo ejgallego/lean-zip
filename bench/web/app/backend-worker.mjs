@@ -248,7 +248,7 @@ async function prepareFirNative(config) {
 async function prepare(config) {
   const started = performance.now();
   if (backendId === "vir") prepared = await prepareVir(config);
-  else if (["fir-native", "fir-level1", "fir-raw"].includes(backendId)) {
+  else if (["fir-native", "fir-raw"].includes(backendId)) {
     prepared = await prepareFirNative(config);
   }
   else if (backendId === "compression-stream") prepared = await prepareCompressionStream();

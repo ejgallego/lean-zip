@@ -22,7 +22,7 @@ const iterations = Number(take("--iterations", "1"));
 const outputPath = take("--out");
 
 if (!Number.isInteger(debugPort) || !Number.isFinite(timeoutMs) || timeoutMs <= 0 ||
-    !["vir", "fir-native", "fir-level1", "fir-raw"].includes(backendId) ||
+    !["vir", "fir-native", "fir-raw"].includes(backendId) ||
     ![1, 3, 5, 9].includes(samples) || ![0, 1, 3, 5, 10].includes(warmups) ||
     ![1, 3, 5, 10, 20].includes(iterations) ||
     cases.some((value) => !["editable", "repeated", "structured", "random", "zeros"]
@@ -178,9 +178,6 @@ async function runCase(kind, bytes, level) {
   } else if (backendId === "fir-native") {
     row.firNative = candidate;
     row.ratios.firNativeOverNative = row.ratios.candidateOverNative;
-  } else if (backendId === "fir-level1") {
-    row.firLevel1 = candidate;
-    row.ratios.firLevel1OverNative = row.ratios.candidateOverNative;
   } else {
     row.firRaw = candidate;
     row.ratios.firRawOverNative = row.ratios.candidateOverNative;

@@ -75,11 +75,9 @@ zip-wasm-oracle cache-probe input.bin expected.bin
 ```
 
 This root is a backend diagnostic, not a compressor or a proposed hand-written
-replacement table. FIR should gate a cache-lifetime repair here first, checking
-native byte equality, idempotent initialization, and stable repeated-call
-scratch, before rerunning the complete Level-1 profile. The exact 83-byte
-compressor cliff input is independently pinned in
-[`fixtures/fir-level1-cache-cliff.json`](fixtures/fir-level1-cache-cliff.json).
+replacement table. FIR cache-lifetime changes should gate here first, checking
+native byte equality and stable repeated-call scratch, before rerunning the
+complete production dispatcher.
 
 ## Vir artifact
 

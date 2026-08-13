@@ -8,13 +8,11 @@ This loopback-only page compares one raw-DEFLATE input across:
 - native lean-zip, used as the byte-for-byte Lean reference;
 - lean-zip interpreted by VIR's package-scoped persistent-interpreter runtime;
 - FIR's zero-import resident-ByteArray stored compressor at Lean level 0;
-- an optional zero-import FIR production compressor at Lean level 1;
 - an optional zero-import FIR production dispatcher at Lean levels 1–10;
 - the browser's `CompressionStream("deflate-raw")` implementation; and
 - pinned fflate JavaScript (`0.8.2`).
 
-It also reserves separate capability rows for FIR's deferred C/Emscripten
-bundle and full-dispatcher support. A missing or level-inapplicable
+It also reserves a capability row for FIR's deferred C/Emscripten bundle. A missing or level-inapplicable
 artifact is reported as unavailable, not silently substituted with another
 implementation.
 
@@ -39,7 +37,7 @@ npm run serve -- \
 ```
 
 Use landed VIR `main` as the sole VIR artifact and optionally attach FIR's
-immutable stored and production Level-1 packages:
+immutable stored and production-dispatcher packages:
 
 ```text
 npm run serve -- \
@@ -47,17 +45,13 @@ npm run serve -- \
   --package /path/to/lean-zip-acceptance.irpkg \
   --vir-profile client-native \
   --fir-stored-package /path/to/lean-zip-stored-package \
-  --fir-level1-package /path/to/lean-zip-level1-package \
   --fir-raw-package /path/to/lean-zip-raw-package
 ```
 
 `--fir-native-package` remains an alias for `--fir-stored-package`. Use
-`?level=0&autorun=1` for FIR stored and `?level=1&autorun=1` for FIR Level 1.
-An admitted raw package enables its own row for every level from 1 through 10.
-Each FIR row remains visible but level-inapplicable outside its exact level.
-The current Level-1 artifact initializes compiler-generated lazy constants once
-per Wasm instance and retains them below its scratch checkpoint. It has passed
-the normal preset matrix through the page's 1 MiB global input bound.
+`?level=0&autorun=1` for FIR stored. The raw package enables its own row for
+every level from 1 through 10. Each FIR row remains visible but
+level-inapplicable outside its advertised range.
 
 The page also has deterministic exact-size inputs: repeated text, structured
 records, seeded random bytes, and zero bytes. Query parameters such as
@@ -115,11 +109,11 @@ level 0 while retaining the adapter's encode/execute/decode phases:
 npm run bench:fir -- --debug-port 9223 --out /tmp/lean-zip-fir-stored-sweep.json
 ```
 
-Once the Level-1 package is attached, its exact-native sweep is:
+The production FIR dispatcher sweep is:
 
 ```text
-npm run bench:fir-level1 -- \
-  --debug-port 9223 --out /tmp/lean-zip-fir-level1-sweep.json
+npm run bench:fir-raw -- --levels 1,6,10 \
+  --debug-port 9223 --out /tmp/lean-zip-fir-raw-sweep.json
 ```
 
 The first call retains the now-once-per-package construction cost of lean-zip's
@@ -147,29 +141,6 @@ interpreter dispatch, IR evaluation, frames/boxing, and allocation/reference
 counting. Use the grouping to choose the next VIR runtime experiment, not as a
 precise additive cost model.
 
-FIR Level-1 has a parallel diagnostics-only profiler. It appends a standard
-name section from FIR's exact ordered function inventory without changing the
-published module's code section, runs the normal package adapter, and requires
-native byte equality plus independent inflation:
-
-```text
-node bench/wasm/profile-fir.mjs \
-  --package /path/to/lean-zip-level1-package \
-  --inventory /path/to/lean-zip-level1.inventory.json \
-  --fir-root /path/to/fir \
-  --fixture bench/wasm/fixtures/fir-level1-cache-cliff.json \
-  --cpu-profile /tmp/lean-zip-fir.cpuprofile \
-  --json /tmp/lean-zip-fir-profile.json
-```
-
-The committed fixture pins the exact 83-byte browser sample and validates both
-its UTF-8 byte length and SHA-256 before profiling. `--text` and `--input`
-remain available for other bounded diagnostics.
-
-Profile timings are diagnostic and should not be presented as headline
-benchmark results. Persistent initialization is reported separately and is
-excluded from profiled compression calls.
-
 After timing, the local server inflates every output with Node zlib. All active
 Lean lanes must additionally match native lean-zip byte-for-byte. Other codecs may
 legitimately produce different raw streams.
@@ -195,46 +166,17 @@ server is the explicit artifact switch.
 
 ## FIR admission boundary
 
-The two FIR rows represent different deliverables:
+The FIR rows represent distinct deliverables:
 
 1. **FIR C / Emscripten** remains disabled. It needs a browser-loadable module
    plus a stable `HEAPU8` adapter for binary-safe `ByteArray` input and output.
 2. **FIR native · stored** is admitted for the zero-import stored compressor at
    level 0.
-3. **FIR native · Level 1** has a complete consumer lane. The current immutable
-   zero-import package has passed its producer-side real-engine execution smoke
-   for `Zip.Wasm.compressLevel1 : ByteArray → ByteArray` and an independent
-   browser native-byte/inflate gate. The server rejects a package with imports,
-   residual runtime operations, a mismatched source entry, non-module-owned
-   memory, an unknown ByteArray layout, an absent/non-idempotent persistent-cache
-   contract, or incomplete checksums. The 20-cell browser gate admits the normal
-   1 MiB comparison-lab input bound.
-4. **FIR native · levels 1–10** has a complete package validator, browser
-   adapter, worker lane, and level-aware call ABI, but is not admitted yet.
-   The exact zero-import module reaches its producer smoke, where FIR's eager
-   persistent-cache initializer incorrectly forces an unreachable panic-only
-   lazy constant. No raw immutable package is attached until that generic FIR
-   cache-semantics regression is fixed and the all-level native/inflate gate
-   passes.
-
-The expected Level-1 package contract is:
-
-```text
-BUILD.json                                  fir.lean-zip.level1.build/v2
-SHA256SUMS                                  covers every other package member
-lean-zip-byte-array-browser-adapter.mjs     shared binary-safe implementation
-lean-zip-level1-browser-adapter.mjs         fir.lean-zip.level1.browser/v2
-lean-zip-level1.wasm                        zero imports; module-owned memory
-lean-zip-level1.wasm.json                   ByteArray object -> ByteArray object
-smoke.mjs                                   producer-side package gate
-```
-
-The adapter exports `createLeanZipLevel1Adapter`; the returned object exposes
-`memory` and `compressLevel1(Uint8Array)`. Results use the same
-`{ bytes, timings, memory }` shape as the stored adapter, including
-encode/execute/decode timing and page telemetry. `adapter.initialization`
-records `fir_initialize_persistent_caches`, the pre/post frontiers, one-time
-initialization timing, and an idempotence check.
+3. **FIR native · levels 1–10** is the sole FIR production-compression lane.
+   Its immutable package has a complete validator, browser adapter, worker
+   lane, and level-aware call ABI. The exact zero-import module passes the full
+   5-case × 10-level native-byte/inflate gate. Lazy cache publication remains
+   part of the honest first workload call.
 
 The raw package adds `lean-zip-raw-browser-adapter.mjs`,
 `standard-math-runtime-contract.mjs`, `lean-zip-raw.wasm`, and its descriptor.
@@ -242,8 +184,8 @@ It must record the exact pre-link frontier
 `Float.ofNat`/`Float.ofScientific`/`Float.log2`, the standard-runtime version
 and 65,536-byte reservation, a zero-import complete module, and the
 `ByteArray × UInt8 → ByteArray` ABI. Its adapter operation is
-`compressRaw(Uint8Array, level)` with `level` in 1–10. Unlike the Level-1
-package, raw v2 does not eagerly call a persistent initializer: compiler lazy
+`compressRaw(Uint8Array, level)` with `level` in 1–10. Raw v2 does not eagerly
+call a persistent initializer: compiler lazy
 caches are populated at their original use sites, publication advances a
 monotonic resident rewind floor, and a repeated warm call must rewind flat to
 the resulting checkpoint. The comparison UI reports this workload-dependent

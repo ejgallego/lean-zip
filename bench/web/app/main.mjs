@@ -38,7 +38,6 @@ const colors = new Map([
   ["fflate", "#b59cff"],
   ["fir-emscripten", "#f1d27a"],
   ["fir-native", "#ff7b72"],
-  ["fir-level1", "#ffb86b"],
   ["fir-raw", "#f1d27a"],
 ]);
 
@@ -282,12 +281,10 @@ async function prepareBackend(id) {
   const configuration = id === "vir"
     ? { ...info.runtime, entry: info.entry }
     : id === "fir-native"
-        ? info.firNative
-        : id === "fir-level1"
-          ? info.firLevel1
-          : id === "fir-raw"
-            ? info.firRaw
-          : {};
+      ? info.firNative
+      : id === "fir-raw"
+        ? info.firRaw
+        : {};
   try {
     const preparation = await client.request("prepare", configuration);
     client.preparation = preparation;
@@ -323,12 +320,6 @@ function renderIdentity() {
     values.push(
       ["FIR native", `${info.artifacts.firNative.firCommit.slice(0, 12)} · stored level 0`],
       ["FIR Wasm", `${formatBytes(info.artifacts.firNative.wasm.bytes)} · ${info.artifacts.firNative.wasm.sha256.slice(0, 16)}…`],
-    );
-  }
-  if (info.artifacts.firLevel1 !== null) {
-    values.push(
-      ["FIR Level 1", `${info.artifacts.firLevel1.firCommit.slice(0, 12)} · production level 1`],
-      ["FIR L1 Wasm", `${formatBytes(info.artifacts.firLevel1.wasm.bytes)} · ${info.artifacts.firLevel1.wasm.sha256.slice(0, 16)}…`],
     );
   }
   if (info.artifacts.firRaw !== null) {
@@ -530,7 +521,7 @@ async function runComparison() {
       }
     }
 
-    for (const id of ["vir", "fir-native", "fir-level1", "fir-raw",
+    for (const id of ["vir", "fir-native", "fir-raw",
       "compression-stream", "fflate"]) {
       if (!capabilityForRun(id, settings.level, input.byteLength).available) continue;
       elements.status.textContent = `${BACKENDS.find((backend) => backend.id === id).name} is running in its worker…`;
@@ -543,7 +534,7 @@ async function runComparison() {
         const result = { ...value, valid: validation.valid, exactNative, sha256: validation.sha256 };
         results.push(result);
         renderResult(result, input.byteLength);
-        if (["vir", "fir-native", "fir-level1", "fir-raw"].includes(id)) {
+        if (["vir", "fir-native", "fir-raw"].includes(id)) {
           renderRuntimePhases(result);
         }
         if (!validation.valid || exactNative === false) failed = true;

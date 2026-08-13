@@ -18,13 +18,12 @@ are excluded.
   `fbfda2cca0fb63ac69ffc43fbdd29ef107fa7807bdedce59f94a91fdcd5835df`
 - VIR package input: 1,151,430 bytes,
   `3f3db6f2a75085f193e8dbe569d8b8ac53dceb9a789e2ef641df6665a711c1d7`
-- FIR package producer: FIR `b25bf331`, lean-zip `30737b4e`
+- FIR stored benchmark producer: FIR `b25bf331`, lean-zip `30737b4e`
 - FIR stored Wasm: 12,868 bytes,
   `3f36c0d334a6768ef183bbef1cce3eb60dd3ce1c4c5256dbec3d780a3e7daedb`
-- FIR production Level-1 package:
-  `b25bf3312d14-30737b4e2ebf-bd7323db4a28eee86d0c`
-- FIR production Level-1 Wasm: 510,967 bytes,
-  `cad8a411cc39b78d4396bd79df88dc6c874d85dd145620c02a6debd1b07c50ac`
+- FIR production-dispatcher producer: FIR `1d79658d`, lean-zip `30737b4e`
+- FIR production levels 1–10 Wasm: 1,753,310 bytes,
+  `0686e69684c187b1b14415f0f3b88fe4ce28514c97f8aac003fbd7359f15b838`
 
 ## VIR compressed levels
 
@@ -186,92 +185,39 @@ not be the first fix for this source shape. The fresh frontier packet is
 `/tmp/lean-zip-fir-stored-frontier-current.json`, SHA-256
 `3beb87b64378a7c146d7fb2b17d891610bcfade5e6499d0488c12058eb65e6af`.
 
-## FIR production Level 1
-
-The FIR lazy-cache repair is now integrated into a new immutable local package.
-The v2 producer retains compiler cache globals, exports the idempotent
-`fir_initialize_persistent_caches` function, invokes it once during adapter
-preparation, and records the resulting frontier as the permanent lower bound
-for per-call scratch rewinds. This is the generic two-region arena repair, not a
-lean-zip-specific replacement table or JavaScript cache.
-
-The 510,967-byte module contains 324 captured source functions and 1,553
-resident helpers. It exports the compressor, persistent initializer, four arena
-operations, and module-owned memory; it has zero imports and zero residual
-runtime operations. Producer generation is byte-for-byte deterministic across
-two emissions. Its five-case native/Wasm differential smoke includes 4 KiB and
-8 KiB inputs and verifies initializer idempotence, exact native bytes,
-independent inflate, and rewind to the persistent checkpoint.
-
-For the exact 83-byte editable input, initialization moved the arena frontier
-from 1,024 to 8,032,904 bytes. Chrome measured 1,006.48 ms for this one-time
-work and 0.005 ms for the required second/idempotence call. The first compression
-call then took 18.815 ms; after three excluded warmups, five steady samples had
-a 4.795 ms median against native's 0.097 ms, or 49.2x. Both emitted the same
-51-byte stream with SHA-256
-`bf81f08e3915c22a555df36af296c5e3d0a4005ca0d393f60e9fbe6ba73da612`,
-and independent raw inflate recovered the input. Steady FIR execution itself
-was 4.715 ms; browser marshalling and decoding were 0.01 ms each.
-
-![Log-scale timing comparison of the old per-call cache rebuild, new one-time initializer, and new FIR steady call](assets/fir-cache-repair.svg)
-
-This removes the old cache cliff: the superseded package took about 47,074 ms
-per 83-byte call, so the new 4.795 ms browser median is approximately 9,800x
-faster. A 200-call Node profile provides the cache-lifetime gate: median wall
-time was 3.145 ms, every call began and ended at frontier 8,032,904, and every
-call used exactly 430,552 bytes of scratch. No `distCodeWordBytes` initializer
-appeared in the sampled call stacks. The remaining self samples are distributed
-across the FIR runtime (59.6%), generic numeric helpers (19.6%), unattributed
-work (13.1%), and lean-zip compressor functions (6.2%); this is the next
-optimization surface, not another cache-lifetime failure.
-
-The broader Chrome gate covers repeated, structured, random, and zero data at
-1 KiB, 16 KiB, 64 KiB, 256 KiB, and 1 MiB: all 20 cells are native-byte-equal
-and independently inflatable. Median ranges across the four inputs were:
-
-| input bytes | native | FIR | FIR / native | retained Wasm pages |
-| ---: | ---: | ---: | ---: | ---: |
-| 1 KiB | 0.042–0.141 ms | 4.21–14.73 ms | 51.7–104.4x | 129–135 |
-| 16 KiB | 0.052–0.207 ms | 6.58–15.84 ms | 42.2–161.2x | 131–135 |
-| 64 KiB | 0.052–0.833 ms | 6.02–20.01 ms | 24.0–115.2x | 134–141 |
-| 256 KiB | 0.066–2.749 ms | 7.06–39.15 ms | 14.2–106.5x | 149–183 |
-| 1 MiB | 0.336–11.238 ms | 11.54–127.81 ms | 11.4–41.6x | 209–532 |
-
-At 1 MiB, scratch above the persistent checkpoint ranged from 5,653,832 bytes
-for zeros to 26,766,928 bytes for seeded random data, and was rewound after
-each call. This is sufficiently bounded for the comparison lab's existing
-1 MiB global limit, so the obsolete 96-byte FIR safety cap has been removed.
-The new timing is practical for the demo, though FIR remains 11–42x slower than
-native at 1 MiB and pays roughly one second once per Wasm instance to construct
-its retained tables.
-
-The exact Chrome report is
-`/tmp/lean-zip-fir-fixed-browser-exact-83.json`, SHA-256
-`642a19f3ea397fa3c2c93d78e1f300429fbffa16bf8970646650b3267bdc2bc4`.
-The 20-cell sweep is `/tmp/lean-zip-fir-fixed-browser-sweep.json`, SHA-256
-`60486c8964ad961c5285f9a89dd1f9b03614d26a406ee2ef1b29237291294a6b`.
-The 200-call named profile and report have SHA-256
-`8ffcdcc7ad786f117a75f5a57e5ae001c2dbfc3d96c00dfeb13e7c2af1512ca4`
-and `3494f5ad5141a5d2f5d89b9ac58dfcb33edbeab570bd6794cf1b08b0f946a809`.
-
 ## FIR production levels 1–10
 
-The full `compressRaw` producer and consumer paths are implemented, including
-the two-argument ABI, reviewed standard-math runtime link, runtime-memory
-reservation, zero-import package validation, and level-aware browser worker.
-There are deliberately no timing rows or artifact identity here yet: the first
-producer execution gate found that FIR's persistent initializer eagerly forces
-an unreachable panic-only lazy constant before any input is encoded. The raw
-package remains unattached until that generic cache-semantics defect is fixed
-and every level passes native byte equality plus independent inflate.
+The sole FIR compressed-level lane is the production `compressRaw` dispatcher.
+The clean immutable package has a two-argument ABI, reviewed standard-math
+runtime link, module-owned memory, zero imports, and zero residual runtime
+operations. Its producer gate passes exact native bytes plus independent raw
+inflate for five inputs at every level from 1 through 10.
+
+FIR `1d79658d` fixes an accidental O(index) cursor walk in every resident Array
+access. On the same 1 KiB structured level-6 Node workload, cold execution fell
+from 917.5 ms to 195.6 ms and the next three calls from 30.0/28.6/27.6 ms to
+11.7/8.9/7.3 ms. Persistent-cache and scratch-frontier growth remained
+byte-identical, and the final module became 217 bytes smaller.
+
+A fresh Chrome sweep of the integrated artifact used five samples after three
+excluded warmups. All rows were exact-native and independently inflatable:
+
+| level | native median | FIR steady median | FIR / native | honest first call |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | 0.121 ms | 9.615 ms | 79.4x | 388.8 ms |
+| 6 | 0.146 ms | 11.530 ms | 78.7x | 318.6 ms |
+| 10 | 0.624 ms | 25.425 ms | 40.8x | 452.4 ms |
+
+Execution accounts for 98.7–99.7% of FIR's steady call. Lazy constants remain
+lazy and their publication is included in the first workload call; the demo
+does not prime or shift that cost into setup.
 
 ## Next measurements
 
-1. Preserve lazy semantics in FIR's persistent-cache initialization, then run
-   the full 5-case × 10-level producer gate and attach the resulting immutable
-   `compressRaw` package only if all cells pass.
-2. Reduce FIR's roughly one-second instance initialization, then profile the
-   steady generic numeric/runtime path on representative larger inputs.
+1. Run the production FIR dispatcher across 1–256 KiB and levels 1–10 to
+   establish its post-Array-fix scaling curve.
+2. Profile the production dispatcher to identify the next steady runtime
+   hotspot without reintroducing a specialized compressor root.
 3. Ask VIR to screen an interpreter-call-site symbol-resolution cache or
    equivalent resolved-call representation against the existing symbolized
    profile; accept only with a fresh profile and order-balanced representative

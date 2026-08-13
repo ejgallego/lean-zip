@@ -90,15 +90,6 @@ export const BACKENDS = Object.freeze([
       : "stored DEFLATE · level 0 only",
   },
   {
-    id: "fir-level1",
-    name: "FIR native · Level 1",
-    family: "lean-zip",
-    execution: "browser WebAssembly",
-    setting: (level) => level === 1
-      ? "production DEFLATE · Lean level 1"
-      : "production DEFLATE · level 1 only",
-  },
-  {
     id: "fir-raw",
     name: "FIR native · levels 1–10",
     family: "lean-zip",
@@ -210,7 +201,7 @@ export function makeReport({ info, source, settings, results, diagnostics = null
       "Correctness validation and report rendering are outside timed regions.",
       "Native Lean samples exclude process startup; browser samples run in dedicated workers.",
       "Focused VIR diagnostics do not replace or modify the production compressor lane.",
-      "FIR stored and Level-1 artifacts are independently capability-gated at Lean levels 0 and 1; the full dispatcher remains gated.",
+      "FIR stored is capability-gated at level 0; the production FIR dispatcher covers levels 1 through 10.",
     ],
   };
 }

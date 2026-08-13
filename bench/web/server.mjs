@@ -31,7 +31,6 @@ const maxCompressedBytes = maxInputBytes + 65536;
 const maxRequestBytes = Math.ceil((maxInputBytes + maxCompressedBytes) * 4 / 3) + 16384;
 // The persistent-cache package stays within the comparison lab's global input
 // bound across the producer and real-engine gates.
-const firLevel1DemoMaxInputBytes = maxInputBytes;
 
 const usage = `usage:
   node bench/web/server.mjs (--package PATH | --package-set PATH) --vir-root PATH [options]
@@ -49,8 +48,6 @@ options:
                            alias for --fir-stored-package
   --fir-stored-package PATH
                            optional immutable FIR stored-DEFLATE package directory
-  --fir-level1-package PATH
-                           optional immutable FIR Level-1 package directory
   --fir-raw-package PATH   optional immutable FIR levels 1-10 package directory
   --port N                 loopback port (default: 4173)
 `;
@@ -67,7 +64,6 @@ function parseArgs(argv) {
     entry: "VirLeanZipAcceptance.compressRaw",
     virProfile: "portable",
     firStoredPackage: null,
-    firLevel1Package: null,
     firRawPackage: null,
     port: 4173,
   };
@@ -90,9 +86,6 @@ function parseArgs(argv) {
         throw new Error("specify the FIR stored package only once");
       }
       options.firStoredPackage = resolve(take(index++, option));
-    }
-    else if (option === "--fir-level1-package") {
-      options.firLevel1Package = resolve(take(index++, option));
     }
     else if (option === "--fir-raw-package") {
       options.firRawPackage = resolve(take(index++, option));
@@ -405,9 +398,6 @@ async function main() {
   const firNative = options.firStoredPackage === null
     ? null
     : await readFirPackage(options.firStoredPackage, FIR_PACKAGE_PROFILES.stored);
-  const firLevel1 = options.firLevel1Package === null
-    ? null
-    : await readFirPackage(options.firLevel1Package, FIR_PACKAGE_PROFILES.level1);
   const firRaw = options.firRawPackage === null
     ? null
     : await readFirPackage(options.firRawPackage, FIR_PACKAGE_PROFILES.raw);
@@ -440,7 +430,6 @@ async function main() {
       },
     },
     firNative: firBrowserConfig(firNative),
-    firLevel1: firBrowserConfig(firLevel1),
     firRaw: firBrowserConfig(firRaw),
     backends: [
       { id: "native", available: true },
@@ -458,15 +447,6 @@ async function main() {
         levels: [0],
         reason: firNative === null
           ? "FIR-native stored artifact not attached"
-          : null,
-      },
-      {
-        id: "fir-level1",
-        available: firLevel1 !== null,
-        levels: [1],
-        maxInputBytes: firLevel1DemoMaxInputBytes,
-        reason: firLevel1 === null
-          ? "FIR-native Level-1 artifact not attached"
           : null,
       },
       {
@@ -502,7 +482,6 @@ async function main() {
       nativeBench,
       fflate: { path: fflatePath, bytes: fflateIdentity.bytes, sha256: fflateIdentity.sha256 },
       firNative: firArtifactIdentity(firNative),
-      firLevel1: firArtifactIdentity(firLevel1),
       firRaw: firArtifactIdentity(firRaw),
     },
   };
@@ -524,8 +503,8 @@ async function main() {
       } else if (request.method === "GET" && url.pathname.startsWith("/fir/")) {
         const name = decodeURIComponent(url.pathname.slice(5));
         const candidates = name === "lean-zip-byte-array-browser-adapter.mjs"
-          ? [firRaw, firLevel1, firNative]
-          : [firNative, firLevel1, firRaw];
+          ? [firRaw, firNative]
+          : [firNative, firRaw];
         const candidate = candidates.find(
           (value) => value !== null &&
             (value.profile.adapterFile === name ||
@@ -540,7 +519,7 @@ async function main() {
         send(response, 200, wasmBytes, "application/wasm");
       } else if (request.method === "GET" && url.pathname.startsWith("/artifacts/lean-zip-")) {
         const name = decodeURIComponent(url.pathname.slice("/artifacts/".length));
-        const candidate = [firNative, firLevel1, firRaw].find(
+        const candidate = [firNative, firRaw].find(
           (value) => value !== null &&
             (value.profile.wasmFile === name || value.profile.descriptorFile === name),
         );
@@ -586,7 +565,6 @@ async function main() {
     console.log(`lean-zip comparison lab: http://127.0.0.1:${options.port}/`);
     console.log(`VIR ${options.entry}; ${packageInput.members.length} package(s); Ctrl-C to stop`);
     if (firNative !== null) console.log("FIR native mode: stored DEFLATE at level 0");
-    if (firLevel1 !== null) console.log("FIR native mode: production DEFLATE at level 1");
     if (firRaw !== null) console.log("FIR native mode: production DEFLATE at levels 1-10");
   });
 }

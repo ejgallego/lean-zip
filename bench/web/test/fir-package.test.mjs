@@ -88,23 +88,6 @@ function validMetadata(profile) {
   };
 }
 
-test("stored and Level-1 FIR profiles have disjoint immutable package names", () => {
-  const stored = FIR_PACKAGE_PROFILES.stored;
-  const level1 = FIR_PACKAGE_PROFILES.level1;
-  assert.notEqual(stored.backendId, level1.backendId);
-  assert.notEqual(stored.adapterFile, level1.adapterFile);
-  assert.notEqual(stored.wasmFile, level1.wasmFile);
-  assert.deepEqual(firPackageRequiredFiles(level1), [
-    "BUILD.json",
-    "SHA256SUMS",
-    "lean-zip-byte-array-browser-adapter.mjs",
-    "lean-zip-level1-browser-adapter.mjs",
-    "lean-zip-level1.wasm",
-    "lean-zip-level1.wasm.json",
-    "smoke.mjs",
-  ]);
-});
-
 test("raw FIR profile advertises the production levels 1 through 10", () => {
   const profile = FIR_PACKAGE_PROFILES.raw;
   const { build, descriptor } = validMetadata(profile);
@@ -152,44 +135,10 @@ test("raw FIR profile advertises the production levels 1 through 10", () => {
     }, descriptor), /lazy-cache rewind contract/);
 });
 
-test("Level-1 FIR package metadata binds source entry, ABI, and zero-import closure", () => {
-  const profile = FIR_PACKAGE_PROFILES.level1;
-  const { build, descriptor } = validMetadata(profile);
-  build.entry.persistentInitializer = profile.persistentInitializer;
-  assert.equal(validateFirPackageMetadata(profile, build, descriptor), profile);
-
-  assert.throws(
-    () => validateFirPackageMetadata(profile,
-      { ...build, entry: { sourceName: "Zip.Wasm.compressStored" } }, descriptor),
-    /does not expose Zip\.Wasm\.compressLevel1/,
-  );
-  assert.throws(
-    () => validateFirPackageMetadata(profile,
-      { ...build, wasm: { ...build.wasm, functionImportCount: 1 } }, descriptor),
-    /zero-import/,
-  );
-  assert.throws(
-    () => validateFirPackageMetadata(profile, build,
-      { ...descriptor, imports: [{ module: "lean.extern", name: "List.zip" }] }),
-    /zero imports/,
-  );
-  assert.throws(
-    () => validateFirPackageMetadata(profile,
-      { ...build, closure: { residualRuntimeOperations: 1 } }, descriptor),
-    /retains runtime operations/,
-  );
-  assert.throws(
-    () => validateFirPackageMetadata(profile,
-      {
-        ...build,
-        capabilities: {
-          ...build.capabilities,
-          persistentCaches: {
-            ...build.capabilities.persistentCaches,
-            idempotent: false,
-          },
-        },
-      }, descriptor),
-    /persistent-cache contract/,
-  );
+test("stored and raw FIR profiles have disjoint immutable package names", () => {
+  const stored = FIR_PACKAGE_PROFILES.stored;
+  const raw = FIR_PACKAGE_PROFILES.raw;
+  assert.notEqual(stored.backendId, raw.backendId);
+  assert.notEqual(stored.adapterFile, raw.adapterFile);
+  assert.notEqual(stored.wasmFile, raw.wasmFile);
 });

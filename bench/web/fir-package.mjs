@@ -17,24 +17,6 @@ export const FIR_PACKAGE_PROFILES = Object.freeze({
     persistentInitializer: null,
     levels: Object.freeze([0]),
   }),
-  level1: Object.freeze({
-    id: "level1",
-    backendId: "fir-level1",
-    level: 1,
-    schemaVersion: "fir.lean-zip.level1.build/v2",
-    sourceName: "Zip.Wasm.compressLevel1",
-    adapterApiVersion: "fir.lean-zip.level1.browser/v2",
-    adapterFile: "lean-zip-level1-browser-adapter.mjs",
-    adapterImplementationFile: "lean-zip-byte-array-browser-adapter.mjs",
-    factoryExport: "createLeanZipLevel1Adapter",
-    operation: "compressLevel1",
-    wasmFile: "lean-zip-level1.wasm",
-    descriptorFile: "lean-zip-level1.wasm.json",
-    smokeFile: "smoke.mjs",
-    profile: "resident-level1-v2",
-    persistentInitializer: "fir_initialize_persistent_caches",
-    levels: Object.freeze([1]),
-  }),
   raw: Object.freeze({
     id: "raw",
     backendId: "fir-raw",
@@ -123,19 +105,6 @@ export function validateFirPackageMetadata(profile, build, descriptor) {
   requireCondition(Number.isInteger(build.closure?.residualRuntimeOperations) &&
     build.closure.residualRuntimeOperations === 0,
   `FIR ${profile.id} package retains runtime operations`);
-  if (profile.persistentInitializer !== null) {
-    requireCondition(build.entry?.persistentInitializer ===
-      profile.persistentInitializer,
-    `FIR ${profile.id} package does not expose its persistent initializer`);
-    requireCondition(build.capabilities?.persistentCaches?.initializer ===
-      profile.persistentInitializer &&
-      build.capabilities.persistentCaches.idempotent === true,
-    `FIR ${profile.id} package has an unsupported persistent-cache contract`);
-    requireCondition(Array.isArray(build.wasm?.exports) &&
-      build.wasm.exports.some(({ name, kind }) =>
-        name === profile.persistentInitializer && kind === "function"),
-    `FIR ${profile.id} package omits its persistent initializer export`);
-  }
   if (profile.id === "raw") {
     const expectedFrontierImports = [
       { module: "lean.extern", name: "Float.ofNat", kind: "function" },
