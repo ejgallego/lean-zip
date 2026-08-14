@@ -18,9 +18,10 @@ are excluded.
   `fbfda2cca0fb63ac69ffc43fbdd29ef107fa7807bdedce59f94a91fdcd5835df`
 - VIR package input: 1,151,430 bytes,
   `3f3db6f2a75085f193e8dbe569d8b8ac53dceb9a789e2ef641df6665a711c1d7`
-- FIR proof-indexed-Array checkpoint: generated from FIR `9437d653` with the
-  closure review committed at W7 `9ef45d3f`, lean-zip `30737b4e`
-- FIR checkpoint levels 1–10 Wasm: 902,411 bytes,
+- FIR proof-indexed-Array package: clean FIR `11ea983f`, lean-zip `30737b4e`;
+  the reviewed closure ratchet is also committed on the current W7 lane as
+  `9ef45d3f`
+- FIR native levels 1–10 Wasm: 902,411 bytes,
   `d3992d5b5e5a4bd11edb93f48e0b95fbc2148a1c0b7c87b395d208e4a61e44cc`
 - Previous FIR production-dispatcher package: FIR `1d79658d`, 1,753,310 bytes,
   `0686e69684c187b1b14415f0f3b88fe4ce28514c97f8aac003fbd7359f15b838`
@@ -119,17 +120,17 @@ its identity/report packet is
 `91d801c40b492938e65c7a22d2bd840fb4c0a975dbc17d015c31dc28475ad05e`.
 Profiled elapsed values are not headline timings.
 
-## FIR proof-indexed Array checkpoint
+## FIR proof-indexed Array package
 
-The 2026-08-14 local checkpoint exercises the proof-indexed Array lowering
+The consolidated 2026-08-14 package exercises the proof-indexed Array lowering
 landed on FIR `main`: typed `getInternal`, `uget`, `get`, `set`, `uset`, and
 `swap` consume their erased bounds proofs without repeating representation or
 bounds branches. Public/foreign helpers and dynamically checked `get!`/`set!`
-remain checked. The checkpoint is deliberately not FIR's canonical immutable
-package: its `BUILD.json` records the dirty preview used during the reviewed
-closure-ratchet update. Its bytes exactly match W7's post-review generated
-artifact, and neither this comparison lab nor the checkpoint server advances
-FIR's canonical pointer.
+remain checked. Its `BUILD.json` records clean FIR commit `11ea983f` and clean
+lean-zip commit `30737b4e`; checksum verification and the producer's levels
+1–10 smoke gate pass. The complete Wasm bytes are identical to the reviewed
+preview and to W7's post-review generated artifact. The comparison server now
+snapshots this clean immutable package rather than `/tmp/fir-lean-zip-raw-review`.
 
 The reviewed isolated closure has 662 captured declarations, 128 reviewed
 externals, 534 retained source functions, 2,598 resident helpers, 3,132
@@ -171,6 +172,49 @@ The FIR-native packet is
 The matching FIR-C packet is
 `/tmp/lean-zip-fir-c-checkpoint-browser-sweep.json`, SHA-256
 `d460643daddb24d9290bcfba219d2dc32874bf9a9141dc7d61e0aaed80954d2c`.
+
+### FIR native versus FIR-C scalability
+
+A second browser checkpoint measured the clean package beside FIR-C at level
+6 on a geometric 4/16/64/256 KiB ladder. Collection order was FIR native,
+FIR-C, FIR-C, FIR native. Each of the four packets used five measured calls
+after three excluded warmups, so each displayed value is the median of ten
+steady samples. All 48 underlying browser cells emitted exact native Lean
+bytes and independently inflated.
+
+The parenthesized value is growth from the preceding 4x-larger-input step:
+
+| input | bytes | FIR native | FIR-C | FIR native / FIR-C |
+| --- | ---: | ---: | ---: | ---: |
+| repeated text | 4 KiB | 27.84 ms | 1.93 ms | 14.4x |
+|  | 16 KiB | 26.17 ms (0.94x) | 3.02 ms (1.57x) | 8.7x |
+|  | 64 KiB | 122.16 ms (4.67x) | 4.84 ms (1.60x) | 25.2x |
+|  | 256 KiB | 325.47 ms (2.66x) | 10.30 ms (2.13x) | 31.6x |
+| structured records | 4 KiB | 27.50 ms | 1.52 ms | 18.1x |
+|  | 16 KiB | 63.61 ms (2.31x) | 1.93 ms (1.27x) | 32.9x |
+|  | 64 KiB | 95.71 ms (1.50x) | 10.10 ms (5.23x) | 9.5x |
+|  | 256 KiB | 419.36 ms (4.38x) | 7.98 ms (0.79x) | 52.5x |
+| seeded random | 4 KiB | 46.47 ms | 3.38 ms | 13.7x |
+|  | 16 KiB | 160.34 ms (3.45x) | 3.79 ms (1.12x) | 42.3x |
+|  | 64 KiB | 482.58 ms (3.01x) | 26.25 ms (6.92x) | 18.4x |
+|  | 256 KiB | 2,041.44 ms (4.23x) | 75.96 ms (2.89x) | 26.9x |
+
+Seeded random is the useful complexity stress here: successive FIR-native
+growth factors are 3.45x, 3.01x, and 4.23x for 4x input growth. Across the full
+64x input range it grows 43.9x and reaches about 0.12 MiB/s at the large end.
+That is compatible with linear work plus fixed and input-dependent costs, and
+decisively unlike the old O(index) Array regression, which would trend toward
+16x time for each 4x step. FIR-C grows 22.5x across the same 64x range and
+reaches 3.29 MiB/s. Thus scalability is no longer the immediate alarm; the
+remaining FIR-native problem is its roughly 27x large-random constant-factor
+gap to the identical dispatcher through Lean C/LLVM/Emscripten.
+
+The host load average was 12.7 before collection and reached 17.9, producing
+visible dispersion and non-monotonic compressible-input points. These are
+diagnostic complexity results, not acceptance timings. The consolidated
+summary packet is `/tmp/lean-zip-fir-d399-paired-scaling.json`, SHA-256
+`482149c2715766edf00ffb9c42796d8fe31384334fd8e16f6f2ca9ef4975c495`;
+it records all ten samples per point plus the four source-packet identities.
 
 ## Previous FIR production levels 1–10
 

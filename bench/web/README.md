@@ -114,6 +114,23 @@ npm run bench:fir-raw -- --levels 1,6,10 \
   --debug-port 9223 --out /tmp/lean-zip-fir-raw-sweep.json
 ```
 
+For a scaling checkpoint, collect the same one-level geometric size matrix in
+FIR-native/FIR-C/FIR-C/FIR-native order. Consolidate the two packets from each
+backend with:
+
+```text
+npm run bench:fir-scaling:summary -- \
+  --fir-raw /tmp/fir-raw-a.json,/tmp/fir-raw-b.json \
+  --fir-c /tmp/fir-c-a.json,/tmp/fir-c-b.json \
+  --out /tmp/fir-scaling-summary.json
+```
+
+The summary rejects matrix or artifact-identity drift, requires every source
+cell to have passed native-byte and inflate validation, compares compressed
+output identities across the two routes, and reports the combined steady
+median, growth factor, throughput, and local scaling exponent. First calls and
+configured warmups remain excluded.
+
 The first call retains the now-once-per-package construction cost of lean-zip's
 computed 32,769-entry `distCodeWordBytes` nullary table. The supported VIR
 runtime retains that table across later public calls. Production stage profiles
