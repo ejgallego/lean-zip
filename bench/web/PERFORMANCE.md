@@ -216,6 +216,52 @@ summary packet is `/tmp/lean-zip-fir-d399-paired-scaling.json`, SHA-256
 `482149c2715766edf00ffb9c42796d8fe31384334fd8e16f6f2ca9ef4975c495`;
 it records all ten samples per point plus the four source-packet identities.
 
+### FIR-C exact-release profile seed
+
+The first function-attributed control profile uses the unchanged served FIR-C
+artifact, not a profiling build. An exact Emscripten relink with only wasm-ld's
+diagnostic map added reproduced the 2,346,345-byte release at SHA-256
+`8a37e8c76883c29c04b2e764482c62ec303344129b547b1f6a150a74a0c9ec7f`.
+Its 6,938 linker-map code entries exactly match the 6,938 pre-Binaryen
+definitions. Carrying those identities through the real optimizer, meta-DCE,
+and final minification pipeline again produced the exact release, with 5,333
+final functions (27 imports and 5,306 definitions).
+
+The checked Node/V8 seed used 256 KiB seeded-random input at level 6, one honest
+first call, three warmups, then 16 sampled steady calls. The accepted rerun's
+steady window was 388.8 ms and resolved every Wasm sample. This duration is
+profile diagnostics, not comparable to the browser timing campaign. Self-time
+attribution was:
+
+| group / function | sampled self-time |
+| --- | ---: |
+| retained Lean functions | 92.68% |
+| `lz77LazyMergedLoop` | 53.98% |
+| `chainWalkPackedUBelow` | 19.10% |
+| `chooseSplitsHeuristicPUPacked` | 13.25% |
+| linked/optimizer Wasm | 3.06% |
+| host/unattributed | 2.72% |
+| other resident helpers | 1.45% |
+| resident Array helpers | 0.10% |
+
+LLVM/Emscripten has fused the principal loop into a 45,321-byte body with
+22,297 static instructions and 926 direct-call sites. The two other sampled
+slices are 1,515 bytes / 766 instructions / 35 call sites and 9,409 bytes /
+4,916 instructions / 238 call sites. The static sites include cold RC,
+numeric, and Array paths; their presence is not a dynamic cost claim. The
+profile instead says that FIR-C's runtime bulk remains self-time in three
+optimized Lean bodies, providing the comparison targets for FIR native.
+
+The raw profile is `/tmp/lean-zip-fir-c-profile-20260814-v2/profile.cpuprofile`,
+SHA-256 `0e3cf7bc764498832dc8acc7a2a12afabf7a4276ae01bf5b8dbd74d128f346a2`;
+its evidence packet SHA-256 is
+`14ef2855734e89f861df15269c3724b656140b0fedb950be3c8ab145f7528251`.
+This run exposed imported-function namespace assumptions in FIR's new sidecar,
+call-graph, and one-function-view tooling; lean-zip sent exact reproducers to
+the FIR tooling lane. CPU self-attribution is valid because V8 reports absolute
+function indices, but the paired FIR-native instruction conclusion waits for
+the generic fixes and W7's packaged FIR-native sidecar.
+
 ## Previous FIR production levels 1–10
 
 The sole FIR compressed-level lane is the production `compressRaw` dispatcher.
