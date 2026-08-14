@@ -118,8 +118,8 @@ async function prepareCompressionStream() {
   };
 }
 
-async function prepareFflate() {
-  const { deflateSync } = await import("/vendor/fflate.mjs");
+async function prepareFflate(config) {
+  const { deflateSync } = await import(config.moduleUrl ?? "/vendor/fflate.mjs");
   return {
     artifactBytes: null,
     compress: (input, level) => deflateSync(input, { level: Math.min(level, 9) }),
@@ -311,7 +311,7 @@ async function prepare(config) {
     prepared = await prepareFirEmscripten(config);
   }
   else if (backendId === "compression-stream") prepared = await prepareCompressionStream();
-  else if (backendId === "fflate") prepared = await prepareFflate();
+  else if (backendId === "fflate") prepared = await prepareFflate(config);
   else throw new Error(`${backendId} is not a browser-worker backend`);
   return {
     prepareMs: performance.now() - started,

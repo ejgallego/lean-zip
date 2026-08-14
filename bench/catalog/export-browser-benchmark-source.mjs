@@ -132,6 +132,8 @@ async function assertSourceRoot(source) {
     "bench/wasm/plan.json",
     "bench/web/app/protocol.mjs",
     "bench/web/app/backend-worker.mjs",
+    "bench/web/app/catalog-controller.mjs",
+    "bench/web/node_modules/fflate/esm/browser.js",
   ]) {
     if (!(await lstat(join(source, path)).catch(() => null))?.isFile()) {
       throw new Error(`lean-zip source is missing ${path}`);
@@ -208,6 +210,14 @@ async function main() {
         join(output, "workload/backend-worker.mjs"),
       ),
       copyFile(
+        join(source, "bench/web/app/catalog-controller.mjs"),
+        join(output, "workload/catalog-controller.mjs"),
+      ),
+      copyFile(
+        join(source, "bench/web/node_modules/fflate/esm/browser.js"),
+        join(output, "workload/fflate.mjs"),
+      ),
+      copyFile(
         join(source, "bench/wasm/plan.json"),
         join(output, "workload/plan.json"),
       ),
@@ -220,6 +230,8 @@ async function main() {
     const payloadPaths = [
       "smoke.mjs",
       "workload/backend-worker.mjs",
+      "workload/catalog-controller.mjs",
+      "workload/fflate.mjs",
       "workload/native-oracle.json",
       "workload/plan.json",
       "workload/protocol.mjs",

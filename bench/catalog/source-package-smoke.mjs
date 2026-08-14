@@ -11,6 +11,8 @@ const build = JSON.parse(await readFile(join(root, "BUILD.json"), "utf8"));
 const oracle = JSON.parse(
   await readFile(join(root, build.workload.nativeOracle), "utf8"),
 );
+const { deflateSync, inflateSync } = await import("./workload/fflate.mjs");
+const controller = await import("./workload/catalog-controller.mjs");
 
 assert.equal(build.schemaVersion, 1);
 assert.equal(build.kind, "lean-zip/browser-benchmark-source");
@@ -24,6 +26,9 @@ assert.deepEqual(build.workload.browserBackends, [
 ]);
 assert.equal(oracle.schemaVersion, 1);
 assert.equal(oracle.kind, "lean-zip/native-oracle-vectors");
+assert.equal(typeof controller.loadCatalogExample, "function");
+const javascriptProbe = new TextEncoder().encode("lean-zip fflate package probe");
+assert.deepEqual(inflateSync(deflateSync(javascriptProbe)), javascriptProbe);
 
 let checked = 0;
 for (const vector of oracle.vectors) {

@@ -66,7 +66,8 @@ Native Lean is a build-time oracle in this package, not a browser execution
 lane. The browser contract keeps `vir`, `fir-native`, `fir-emscripten`,
 `compression-stream`, and `fflate` distinct. The package uses the generic
 `browser-benchmarks/source-package/v1` fresh-output contract and includes its
-own checksums and semantic smoke.
+own catalog controller, pinned fflate module, checksums, and semantic smoke.
+Run `npm install` under `bench/web` before exporting from a fresh checkout.
 
 The page also has deterministic exact-size inputs: repeated text, structured
 records, seeded random bytes, and zero bytes. Query parameters such as
