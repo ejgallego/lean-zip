@@ -12,6 +12,19 @@ inflater:
 node bench/fir-c/package.mjs
 ```
 
+Artifact catalogs use the same producer through its fresh-output form:
+
+```text
+bench/fir-c/package.mjs \
+  --output OUTPUT \
+  --checkout producer=LEAN_ZIP \
+  --checkout fir=FIR \
+  --checkout zip-common=ZIP_COMMON
+```
+
+The resulting package includes checksums, the native-oracle comparison, and a
+package-local independent-inflate smoke.
+
 The generated package is local and ignored under
 `bench/fir-c/_build/lean-zip-emscripten-current/`. Its manifest verifies the
 Emscripten JavaScript and Wasm artifacts before initialization. The browser

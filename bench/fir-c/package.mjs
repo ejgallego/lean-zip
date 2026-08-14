@@ -9,6 +9,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   rmSync,
   writeFileSync,
@@ -21,16 +22,82 @@ const leanZipRoot = resolve(laneDirectory, "../..");
 const gitCommonDirectory = execFileSync("git", [
   "-C", leanZipRoot, "rev-parse", "--path-format=absolute", "--git-common-dir",
 ], { encoding: "utf8" }).trim();
-const firRoot = resolve(process.env.FIR_ROOT ??
-  join(dirname(dirname(gitCommonDirectory)), "fir"));
-const zipCommonRoot = resolve(leanZipRoot, ".lake/packages/zipCommon");
-const rebuild = process.argv.includes("--rebuild");
-const positional = process.argv.slice(2).filter((argument) => argument !== "--rebuild");
-if (positional.length > 1) {
-  throw new Error("usage: node package.mjs [--rebuild] [output-directory]");
+
+function parseInvocation(argv) {
+  if (!argv.includes("--output")) {
+    const rebuild = argv.includes("--rebuild");
+    const positional = argv.filter((argument) => argument !== "--rebuild");
+    if (positional.length > 1) {
+      throw new Error("usage: node package.mjs [--rebuild] [output-directory]");
+    }
+    return {
+      rebuild,
+      output: resolve(positional[0] ??
+        join(laneDirectory, "_build/lean-zip-emscripten-current")),
+      fir: resolve(process.env.FIR_ROOT ??
+        join(dirname(dirname(gitCommonDirectory)), "fir")),
+      zipCommon: resolve(process.env.ZIP_COMMON_ROOT ??
+        join(leanZipRoot, ".lake/packages/zipCommon")),
+    };
+  }
+  const values = { output: null, checkouts: new Map(), rebuild: false };
+  const take = (index, option) => {
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) {
+      throw new Error(`${option} requires a value`);
+    }
+    return value;
+  };
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index];
+    if (argument === "--output") {
+      if (values.output !== null) throw new Error("duplicate --output");
+      values.output = resolve(take(index++, argument));
+    } else if (argument === "--checkout") {
+      const assignment = take(index++, argument);
+      const separator = assignment.indexOf("=");
+      if (separator <= 0 || separator === assignment.length - 1) {
+        throw new Error("--checkout requires ROLE=PATH");
+      }
+      const role = assignment.slice(0, separator);
+      if (!["producer", "fir", "zip-common"].includes(role)) {
+        throw new Error(`unknown checkout role: ${role}`);
+      }
+      if (values.checkouts.has(role)) throw new Error(`duplicate checkout role: ${role}`);
+      values.checkouts.set(role, resolve(assignment.slice(separator + 1)));
+    } else if (argument === "--package") {
+      take(index, argument);
+      throw new Error("FIR C/Emscripten producer does not accept dependency packages");
+    } else if (argument === "--rebuild") {
+      if (values.rebuild) throw new Error("duplicate --rebuild");
+      values.rebuild = true;
+    } else {
+      throw new Error(`unknown argument: ${argument}`);
+    }
+  }
+  if (values.output === null) throw new Error("pass --output PATH");
+  for (const role of ["producer", "fir", "zip-common"]) {
+    if (!values.checkouts.has(role)) throw new Error(`missing checkout role: ${role}`);
+  }
+  if (realpathSync(values.checkouts.get("producer")) !== realpathSync(leanZipRoot)) {
+    throw new Error("producer checkout must contain this entry point");
+  }
+  if (existsSync(values.output)) {
+    throw new Error(`output directory already exists: ${values.output}`);
+  }
+  return {
+    rebuild: values.rebuild,
+    output: values.output,
+    fir: values.checkouts.get("fir"),
+    zipCommon: values.checkouts.get("zip-common"),
+  };
 }
-const outputDirectory = resolve(positional[0] ??
-  join(laneDirectory, "_build/lean-zip-emscripten-current"));
+
+const invocation = parseInvocation(process.argv.slice(2));
+const firRoot = invocation.fir;
+const zipCommonRoot = invocation.zipCommon;
+const rebuild = invocation.rebuild;
+const outputDirectory = invocation.output;
 const stagingRoot = join(laneDirectory, "_build/emscripten-source-root");
 const builder = join(firRoot, "integration/lcnf-c-wasm/build-emscripten.sh");
 const firLoader = join(firRoot, "integration/lcnf-c-wasm/emscripten-loader.mjs");
@@ -167,6 +234,8 @@ run(builder, buildArguments, {
 copyFileSync(firLoader, join(outputDirectory, "emscripten-loader.mjs"));
 copyFileSync(join(laneDirectory, "lean-zip-emscripten-adapter.mjs"),
   join(outputDirectory, "lean-zip-emscripten-adapter.mjs"));
+copyFileSync(join(laneDirectory, "package-smoke.mjs"),
+  join(outputDirectory, "smoke.mjs"));
 
 const manifestPath = join(outputDirectory, "lean-zip-emscripten.manifest.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -213,10 +282,13 @@ const packageNames = [
   "lean-zip-emscripten.manifest.json",
   "lean-zip-emscripten.mjs",
   "lean-zip-emscripten.wasm",
+  "smoke.mjs",
 ];
 writeFileSync(join(outputDirectory, "SHA256SUMS"), packageNames.map((name) =>
   `${sha256(readFileSync(join(outputDirectory, name)))}  ${name}`).join("\n") + "\n");
 
 run(process.execPath, [join(laneDirectory, "check.mjs"), outputDirectory, oracle],
   { capture: false });
+run(process.execPath, [join(outputDirectory, "smoke.mjs")],
+  { capture: false, cwd: outputDirectory });
 console.log(`prepared tested FIR C/Emscripten lean-zip package: ${outputDirectory}`);
