@@ -18,8 +18,11 @@ are excluded.
   `fbfda2cca0fb63ac69ffc43fbdd29ef107fa7807bdedce59f94a91fdcd5835df`
 - VIR package input: 1,151,430 bytes,
   `3f3db6f2a75085f193e8dbe569d8b8ac53dceb9a789e2ef641df6665a711c1d7`
-- FIR production-dispatcher producer: FIR `1d79658d`, lean-zip `30737b4e`
-- FIR production levels 1–10 Wasm: 1,753,310 bytes,
+- FIR proof-indexed-Array checkpoint: generated from FIR `9437d653` with the
+  closure review committed at W7 `9ef45d3f`, lean-zip `30737b4e`
+- FIR checkpoint levels 1–10 Wasm: 902,411 bytes,
+  `d3992d5b5e5a4bd11edb93f48e0b95fbc2148a1c0b7c87b395d208e4a61e44cc`
+- Previous FIR production-dispatcher package: FIR `1d79658d`, 1,753,310 bytes,
   `0686e69684c187b1b14415f0f3b88fe4ce28514c97f8aac003fbd7359f15b838`
 - FIR C/Emscripten producer: FIR `515bf401`, lean-zip `261268cc`
 - FIR C/Emscripten Wasm: 2,346,345 bytes,
@@ -116,7 +119,60 @@ its identity/report packet is
 `91d801c40b492938e65c7a22d2bd840fb4c0a975dbc17d015c31dc28475ad05e`.
 Profiled elapsed values are not headline timings.
 
-## FIR production levels 1–10
+## FIR proof-indexed Array checkpoint
+
+The 2026-08-14 local checkpoint exercises the proof-indexed Array lowering
+landed on FIR `main`: typed `getInternal`, `uget`, `get`, `set`, `uset`, and
+`swap` consume their erased bounds proofs without repeating representation or
+bounds branches. Public/foreign helpers and dynamically checked `get!`/`set!`
+remain checked. The checkpoint is deliberately not FIR's canonical immutable
+package: its `BUILD.json` records the dirty preview used during the reviewed
+closure-ratchet update. Its bytes exactly match W7's post-review generated
+artifact, and neither this comparison lab nor the checkpoint server advances
+FIR's canonical pointer.
+
+The reviewed isolated closure has 662 captured declarations, 128 reviewed
+externals, 534 retained source functions, 2,598 resident helpers, 3,132
+complete functions, and zero residual runtime operations. The complete module
+is zero-import and 902,411 bytes, versus 1,753,310 bytes for the earlier
+served package. This is principally a closure/source-isolation result, not an
+Array speed claim.
+
+A real Chrome checkpoint sweep covered repeated text, structured records, and
+seeded random inputs at 16 and 64 KiB, levels 1/6/10, three measured samples
+after three excluded warmups. A matching FIR C/Emscripten sweep used the same
+matrix. All 36 browser cells emitted exact native Lean bytes and passed
+independent raw-DEFLATE inflation.
+
+Representative 64 KiB medians were:
+
+| input | level | native | FIR native checkpoint | FIR C/Emscripten | FIR native / FIR C |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| repeated text | 1 | 0.137 ms | 6.735 ms | 0.580 ms | 11.6x |
+| repeated text | 6 | 0.771 ms | 28.700 ms | 1.605 ms | 17.9x |
+| repeated text | 10 | 6.751 ms | 258.605 ms | 18.915 ms | 13.7x |
+| structured records | 1 | 0.253 ms | 5.780 ms | 0.520 ms | 11.1x |
+| structured records | 6 | 0.741 ms | 44.320 ms | 2.850 ms | 15.6x |
+| structured records | 10 | 7.011 ms | 293.965 ms | 31.575 ms | 9.3x |
+| seeded random | 1 | 1.132 ms | 17.800 ms | 3.010 ms | 5.9x |
+| seeded random | 6 | 4.650 ms | 256.215 ms | 8.445 ms | 30.3x |
+| seeded random | 10 | 16.617 ms | 588.535 ms | 46.170 ms | 12.7x |
+
+FIR native execution accounted for 97.3–100.0% of steady call time across the
+checkpoint matrix. The host load was elevated and the FIR-native and FIR-C
+sweeps were sequential rather than order-balanced, so these rows are a
+correctness-backed diagnostic checkpoint, not a performance acceptance or a
+precise before/after Array measurement. They do establish that removing the
+proof-indexed checks does not close the resident-native execution gap.
+
+The FIR-native packet is
+`/tmp/lean-zip-fir-d399-checkpoint-browser-sweep.json`, SHA-256
+`28d48e3f37c3f593598d08d8c2b864c9e15c21acd0ae7e58dedc491139b8b1ec`.
+The matching FIR-C packet is
+`/tmp/lean-zip-fir-c-checkpoint-browser-sweep.json`, SHA-256
+`d460643daddb24d9290bcfba219d2dc32874bf9a9141dc7d61e0aaed80954d2c`.
+
+## Previous FIR production levels 1–10
 
 The sole FIR compressed-level lane is the production `compressRaw` dispatcher.
 The clean immutable package has a two-argument ABI, reviewed standard-math
