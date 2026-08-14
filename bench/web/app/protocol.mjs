@@ -60,7 +60,7 @@ export const BACKENDS = Object.freeze([
     setting: (level) => `lean-zip level ${level}`,
   },
   {
-    id: "fir-raw",
+    id: "fir-native",
     name: "FIR native · levels 1–10",
     family: "lean-zip",
     execution: "browser WebAssembly",
@@ -90,6 +90,10 @@ export const BACKENDS = Object.freeze([
     setting: (level) => `fflate level ${Math.min(level, 9)}`,
   },
 ]);
+
+export const BROWSER_BACKENDS = Object.freeze(
+  BACKENDS.filter(({ id }) => id !== "native"),
+);
 
 export function backendById(id) {
   const backend = BACKENDS.find((candidate) => candidate.id === id);

@@ -503,7 +503,7 @@ async function main() {
       { id: "native", available: true },
       { id: "vir", available: true, profile: options.virProfile },
       {
-        id: "fir-raw",
+        id: "fir-native",
         available: firRaw !== null,
         levels: FIR_PACKAGE_PROFILES.raw.levels,
         maxInputBytes,

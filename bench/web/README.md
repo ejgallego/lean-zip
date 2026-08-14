@@ -50,6 +50,24 @@ npm run serve -- \
 Both FIR packages enable their own row for every level from 1 through 10. Each
 row remains visible but level-inapplicable outside its advertised range.
 
+## Catalog source package
+
+The comparison semantics can be exported independently of this loopback
+server. The source package carries deterministic inputs, native-Lean oracle
+bytes, the workload plan, and the client-owned browser protocol and worker:
+
+```text
+npm run export:catalog-source -- \
+  --output ../../build/lean-zip-browser-source \
+  --checkout producer=../..
+```
+
+Native Lean is a build-time oracle in this package, not a browser execution
+lane. The browser contract keeps `vir`, `fir-native`, `fir-emscripten`,
+`compression-stream`, and `fflate` distinct. The package uses the generic
+`browser-benchmarks/source-package/v1` fresh-output contract and includes its
+own checksums and semantic smoke.
+
 The page also has deterministic exact-size inputs: repeated text, structured
 records, seeded random bytes, and zero bytes. Query parameters such as
 `?case=structured&bytes=65536&level=6&samples=3&backends=native,vir&autorun=1`
@@ -110,7 +128,7 @@ npm run bench:fir-c -- --levels 1,6,10 \
 The production FIR dispatcher sweep is:
 
 ```text
-npm run bench:fir-raw -- --levels 1,6,10 \
+npm run bench:fir-native -- --levels 1,6,10 \
   --debug-port 9223 --out /tmp/lean-zip-fir-raw-sweep.json
 ```
 

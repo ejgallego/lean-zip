@@ -1,7 +1,7 @@
 export const FIR_PACKAGE_PROFILES = Object.freeze({
   raw: Object.freeze({
     id: "raw",
-    backendId: "fir-raw",
+    backendId: "fir-native",
     schemaVersion: "fir.lean-zip.raw.build/v2",
     sourceName: "Zip.Wasm.compressRaw",
     adapterApiVersion: "fir.lean-zip.raw.browser/v2",

@@ -62,7 +62,7 @@ async function readPackets(paths, backend, candidateField) {
 }
 
 const inputs = {
-  firRaw: await readPackets(packetPaths.firRaw, "fir-raw", "firRaw"),
+  firRaw: await readPackets(packetPaths.firRaw, "fir-native", "firRaw"),
   firEmscripten: await readPackets(
     packetPaths.firEmscripten,
     "fir-emscripten",
@@ -163,7 +163,7 @@ const result = {
   version: 1,
   generatedAt: new Date().toISOString(),
   method: {
-    packetOrder: ["fir-raw", "fir-emscripten", "fir-emscripten", "fir-raw"],
+    packetOrder: ["fir-native", "fir-emscripten", "fir-emscripten", "fir-native"],
     aggregation: "median of all measured samples; first calls and warmups excluded",
     packetPairsPerBackend: packetPaths.firRaw.length,
   },

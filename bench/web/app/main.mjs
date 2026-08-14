@@ -37,7 +37,7 @@ const colors = new Map([
   ["compression-stream", "#65d8d2"],
   ["fflate", "#b59cff"],
   ["fir-emscripten", "#ffcf70"],
-  ["fir-raw", "#ff7b72"],
+  ["fir-native", "#ff7b72"],
 ]);
 
 class WorkerClient {
@@ -286,7 +286,7 @@ async function prepareBackend(id) {
   clients.set(id, client);
   const configuration = id === "vir"
     ? { ...info.runtime, entry: info.entry }
-    : id === "fir-raw"
+    : id === "fir-native"
       ? info.firRaw
       : id === "fir-emscripten"
         ? info.firEmscripten
@@ -527,7 +527,7 @@ async function runComparison() {
       }
     }
 
-    for (const id of ["vir", "fir-raw", "fir-emscripten",
+    for (const id of ["vir", "fir-native", "fir-emscripten",
       "compression-stream", "fflate"]) {
       if (!capabilityForRun(id, settings.level, input.byteLength).available) continue;
       elements.status.textContent = `${BACKENDS.find((backend) => backend.id === id).name} is running in its worker…`;
@@ -540,7 +540,7 @@ async function runComparison() {
         const result = { ...value, valid: validation.valid, exactNative, sha256: validation.sha256 };
         results.push(result);
         renderResult(result, input.byteLength);
-        if (["vir", "fir-raw", "fir-emscripten"].includes(id)) {
+        if (["vir", "fir-native", "fir-emscripten"].includes(id)) {
           renderRuntimePhases(result);
         }
         if (!validation.valid || exactNative === false) failed = true;

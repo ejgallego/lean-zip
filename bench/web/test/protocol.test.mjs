@@ -47,7 +47,7 @@ test("run settings enforce the interactive safety bounds", () => {
 });
 
 test("backend-specific input caps fail closed without disabling other runs", () => {
-  const capability = { id: "fir-raw", available: true, maxInputBytes: 1048576 };
+  const capability = { id: "fir-native", available: true, maxInputBytes: 1048576 };
   assert.equal(capabilityForInputSize(capability, 1048576), capability);
   assert.deepEqual(capabilityForInputSize(capability, 1048577), {
     ...capability,
@@ -65,15 +65,15 @@ test("throughput and backend settings remain backend-specific", () => {
   assert.equal(backendById("compression-stream").setting(9), "browser default (no level API)");
   assert.equal(backendById("fflate").setting(10), "fflate level 9");
   assert.equal(backendById("vir").setting(6), "lean-zip level 6");
-  assert.equal(backendById("fir-raw").setting(1), "production DEFLATE · Lean level 1");
-  assert.equal(backendById("fir-raw").setting(10), "production DEFLATE · Lean level 10");
+  assert.equal(backendById("fir-native").setting(1), "production DEFLATE · Lean level 1");
+  assert.equal(backendById("fir-native").setting(10), "production DEFLATE · Lean level 10");
   assert.equal(backendById("fir-emscripten").setting(6),
     "Lean C/Emscripten · level 6");
 });
 
 test("both production FIR routes are displayed immediately after VIR", () => {
   assert.deepEqual(BACKENDS.slice(0, 4).map(({ id }) => id), [
-    "native", "vir", "fir-raw", "fir-emscripten",
+    "native", "vir", "fir-native", "fir-emscripten",
   ]);
 });
 

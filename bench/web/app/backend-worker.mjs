@@ -304,7 +304,7 @@ async function prepareFirEmscripten(config) {
 async function prepare(config) {
   const started = performance.now();
   if (backendId === "vir") prepared = await prepareVir(config);
-  else if (backendId === "fir-raw") {
+  else if (backendId === "fir-native") {
     prepared = await prepareFirNative(config);
   }
   else if (backendId === "fir-emscripten") {

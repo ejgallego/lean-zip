@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "export:catalog-source": "node ../catalog/export-browser-benchmark-source.mjs",
     "serve": "node server.mjs",
     "bench:fir-c": "node test/vir-sweep.mjs --backend fir-emscripten --levels 1,6,10",
-    "bench:fir-raw": "node test/vir-sweep.mjs --backend fir-raw",
+    "bench:fir-native": "node test/vir-sweep.mjs --backend fir-native",
     "bench:fir-scaling:summary": "node test/fir-scaling-summary.mjs",
     "bench:vir": "node test/vir-sweep.mjs",
     "test": "node --test test/*.test.mjs"
