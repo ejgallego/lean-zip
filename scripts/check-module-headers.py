@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Require the module header in tracked Lean sources, excluding Lake configs."""
+"""Require the module header in tracked Lean sources, excluding Lake configs and the legacy conformance package."""
 
 from pathlib import Path
 import subprocess
@@ -13,7 +13,8 @@ paths = subprocess.check_output(
 missing = []
 checked = 0
 for name in paths:
-    if not name or Path(name).name == "lakefile.lean":
+    # Conformance imports upstream lean-zlib, which has not adopted modules.
+    if not name or Path(name).name == "lakefile.lean" or name.startswith("conformance/"):
         continue
     checked += 1
     lines = (root / name).read_text().splitlines()

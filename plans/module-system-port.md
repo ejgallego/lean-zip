@@ -1,5 +1,46 @@
 # Port lean-zip to Lean's module system
 
+## Current update: upstream split and Lean 4.33.0 (2026-09-09)
+
+The module branch now integrates upstream master at
+`6226abae88923f382ac09ae833a9c3f8220dbbc6`. Upstream removed the archive APIs,
+fixture scripts, and benchmark package, leaving the verified DEFLATE core and
+a new `conformance/` package for comparison against system zlib. Both current
+packages select final `leanprover/lean4:v4.33.0`.
+
+The shipped library and root tests retain module headers, public re-exports,
+and exposed computational definitions. Public API checks now cover the retained
+native codec APIs; checks for the removed FFI/archive APIs were removed. CI
+caches and jobs follow the new root/conformance structure.
+
+The common dependency remains pinned to the published fork commit
+`3247bd6d39c31e019f80a2def42790bc21ff5599`; upstream common main still points to
+`4425bab1f9522307d77e8d485bc536149ba31c36`. The new conformance package imports
+upstream `lean-zlib` at `1a79d2d7713e55d98084f4ed92fd44263aab133c`, which is
+still a legacy Lean package. Conformance therefore retains upstream legacy
+sources and is explicitly excluded from the module-header check until that
+dependency is ported. Lake may warn about its imports of module-enabled packages.
+This exception does not affect module use by downstream library consumers.
+
+Current validation commands (no local dependency override):
+
+```sh
+lake --no-cache build
+lake --no-cache test
+lake -d conformance --no-cache build
+lake -d conformance --no-cache test
+```
+
+Final 4.33.0 validation passed: clean root build (237 jobs), root native tests,
+conformance build (257 jobs), conformance tests, and a separate module consumer
+build/run. The consumer uses no extra link flags and passes five DEFLATE and gzip
+roundtrips. CI lint, the 99-source module-header check, and diff checks passed.
+Logs are under
+`.local-deps/module-port-logs/v433-*.log`. The prior clean build and test results
+below describe the pre-split 4.33.0-rc1 port.
+
+## Historical port and publication record (2026-09-08)
+
 Analysis baseline: `9bc0e7d2`, with both packages pinned to
 `leanprover/lean4:v4.33.0-rc1`. The compatibility port is implemented on
 `feat/module-system`; clean builds and tests have passed for both packages using

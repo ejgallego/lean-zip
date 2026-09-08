@@ -1,11 +1,5 @@
 module
 
-public import Zip.Basic
-public import Zip.Gzip
-public import Zip.Checksum
-public import Zip.RawDeflate
-public import Zip.Tar
-public import Zip.Archive
 public import Zip.Spec.Adler32
 public import Zip.Spec.Crc32
 public import Zip.Spec.Huffman

@@ -14,11 +14,8 @@ example (v : UInt32) : (Binary.writeUInt32LE v).size = 4 := by simp
 
 example (data : ByteArray) : data.copyWithin 0 0 = data ++ data.extract 0 0 := rfl
 
-example : ByteArray → UInt8 → IO ByteArray := fun data level => Zlib.compress data level
-example : IO.FS.Handle → UInt64 → IO Unit := Handle.seek
-
 -- Default arguments and structure fields must remain available to consumers.
-example (data : ByteArray) : IO ByteArray := Zlib.compress data
+example (data : ByteArray) : ByteArray := Zip.Native.GzipEncode.compress data
 example (data : ByteArray) : ZipCommon.BitReader :=
   { data, pos := 0, bitOff := 0 }
 
