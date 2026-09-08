@@ -1,8 +1,13 @@
-import Zip.Native.BitWriter
-import Zip.Native.Inflate
-import Zip.Native.Wide
-import Zip.Native.TokenArray
+module
+
+public import Zip.Native.BitWriter
+public import Zip.Native.Inflate
+public import Zip.Native.Wide
+public import Zip.Native.TokenArray
 import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
   Pure Lean DEFLATE compressor.
@@ -15,7 +20,7 @@ import Std.Tactic.BVDecide
 namespace Zip.Native.Deflate
 
 /-- Maximum data bytes per stored block (2^16 - 1). -/
-private def maxBlockSize : Nat := 65535
+def maxBlockSize : Nat := 65535
 
 /-- Compress data into raw DEFLATE stored blocks (level 0).
     Splits into blocks of at most 65535 bytes. Each block has:

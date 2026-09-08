@@ -1,6 +1,12 @@
-import Zip.Native.Deflate
-import Zip.Spec.LZ77
-import ZipForStd.ByteArray
+module
+
+public import Zip.Native.Deflate
+public import Zip.Spec.LZ77
+public import ZipForStd.ByteArray
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-! Correctness of native LZ77 matchers (`lz77Greedy` and `lz77Lazy`): proves `ValidDecomp`,
     token encodability, and length bounds against the spec-level LZ77 definitions. -/
@@ -976,7 +982,7 @@ theorem lz77Greedy_resolves (data : ByteArray)
 
 /-! ## lz77Greedy encodability -/
 
-private def Encodable (t : LZ77Token) : Prop :=
+def Encodable (t : LZ77Token) : Prop :=
   match t with
   | .literal _ => True
   | .reference len dist => 3 ≤ len ∧ len ≤ 258 ∧ 1 ≤ dist ∧ dist ≤ 32768

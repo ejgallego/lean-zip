@@ -1,6 +1,11 @@
-import Zip.Native.Inflate
-import ZipForStd.ByteArray
+module
+
+public import Zip.Native.Inflate
+public import ZipForStd.ByteArray
 import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
   Native Level 0 roundtrip: inflate (deflateStoredPure data) = .ok data
@@ -708,7 +713,7 @@ private theorem inflateLoop_deflateStored (data : ByteArray) (pos : Nat)
 /-! ## Output size theorems -/
 
 /-- Number of stored blocks: ⌈max(n,1) / 65535⌉, which equals (n-1)/65535 + 1 in Nat. -/
-private def numStoredBlocks (n : Nat) : Nat := (n - 1) / 65535 + 1
+def numStoredBlocks (n : Nat) : Nat := (n - 1) / 65535 + 1
 
 /-- Exact output size of deflateStoredPure: each block adds 5 bytes of overhead.
     Proved by well-founded induction on remaining data size. -/

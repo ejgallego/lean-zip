@@ -1,8 +1,14 @@
-import Zip.Native.InflateFast
-import Zip.Spec.InflateTreeFreeCorrect
-import Zip.Spec.InflateWideRefillCorrect
-import Zip.Spec.DecodeCorrect
-import Zip.Spec.BitstreamCorrect
+module
+
+public import Zip.Native.InflateFast
+public import Zip.Spec.InflateTreeFreeCorrect
+public import Zip.Spec.InflateWideRefillCorrect
+public import Zip.Spec.DecodeCorrect
+public import Zip.Spec.BitstreamCorrect
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # Correctness of the write-once cursor decode (issue #2799)

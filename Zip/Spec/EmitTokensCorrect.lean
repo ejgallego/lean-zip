@@ -1,7 +1,13 @@
-import Zip.Spec.DeflateFixedTables
-import Zip.Spec.LZ77NativeCorrect
-import Zip.Spec.BitWriterCorrect
-import Zip.Spec.HuffmanEncodeCorrect
+module
+
+public import Zip.Spec.DeflateFixedTables
+public import Zip.Spec.LZ77NativeCorrect
+public import Zip.Spec.BitWriterCorrect
+public import Zip.Spec.HuffmanEncodeCorrect
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # emitTokens ↔ encodeSymbols Correspondence

@@ -15,6 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check module headers
+        run: python3 scripts/check-module-headers.py
+
       - name: Install elan
         run: |
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
@@ -25,8 +28,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'Zip/**/*.lean', 'ZipTest/**/*.lean', 'ZipTest.lean', 'Zip.lean', 'c/**') }}
-          restore-keys: lake-
+          key: lake-modules-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json', 'ZipModuleTests/**/*.lean', 'Zip/**/*.lean', 'ZipTest/**/*.lean', 'ZipTest.lean', 'Zip.lean', 'c/**') }}
+          restore-keys: lake-modules-
 
       - name: Clean stale Lake cache on fallback restore
         if: steps.cache.outputs.cache-hit != 'true'
@@ -51,6 +54,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check module headers
+        run: python3 scripts/check-module-headers.py
+
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y zlib1g-dev pkg-config
 
@@ -68,8 +74,8 @@ jobs:
           path: |
             .lake
             conformance/.lake
-          key: conformance-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'Zip/**/*.lean', 'c/**', 'conformance/**') }}
-          restore-keys: conformance-
+          key: conformance-modules-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json', 'ZipModuleTests/**/*.lean', 'Zip/**/*.lean', 'Zip.lean', 'ZipTest.lean', 'ZipTest/**/*.lean', 'c/**', 'conformance/**') }}
+          restore-keys: conformance-modules-
 
       - name: Clean stale Lake cache on fallback restore
         if: steps.cache.outputs.cache-hit != 'true'

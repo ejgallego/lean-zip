@@ -1,4 +1,10 @@
-import Zip.Native.DeflateDynamic
+module
+
+public import Zip.Native.DeflateDynamic
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 namespace Zip.Native.Deflate
 
@@ -99,11 +105,11 @@ theorem chooseSplitsHeuristicP_go_no_remaining (toks : TokenArray)
       simp [hnrem, hstep]
     · rw [dite_eq_right hi]
 
-private def splitSum10
+def splitSum10
     (a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 : Nat) : Nat :=
   a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9
 
-private def splitBumpToNat
+def splitBumpToNat
     (p : USize × USize × USize × USize × USize × USize × USize × USize × USize × USize) :
     Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat × Nat :=
   match p with

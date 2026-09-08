@@ -1,7 +1,13 @@
-import Zip.Native.BitWriter
-import Zip.Spec.Deflate
-import Zip.Spec.Huffman
-import Zip.Spec.BitstreamWriteCorrect
+module
+
+public import Zip.Native.BitWriter
+public import Zip.Spec.Deflate
+public import Zip.Spec.Huffman
+public import Zip.Spec.BitstreamWriteCorrect
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # BitWriter ↔ spec bitstream correspondence

@@ -48,13 +48,17 @@ def ltoLinkFlags : IO (Array String) := do
     `conformance/` sub-package, so a downstream `require lean-zip` never
     needs system zlib. -/
 package «lean-zip» where
+  requiresModuleSystem := true
   moreLeancArgs := run_io ltoFlags
   moreLinkArgs := run_io ltoLinkFlags
   testDriver := "test"
 
-require zipCommon from git "https://github.com/kim-em/lean-zip-common" @ "6b7d018cd9d5cf37e05e1d80797c5f1df52ef864"
+require zipCommon from git "https://github.com/ejgallego/lean-zip-common" @ "25544958ec8fec76e8f720c5bdbe683cd897067a"
 
 lean_lib Zip
+
+lean_lib ZipModuleTests where
+  globs := #[.submodules `ZipModuleTests]
 
 -- ByteArray.copyWithin primitive (project-local stopgap for lean#14158);
 -- no external library, always compiled.

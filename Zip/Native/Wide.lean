@@ -1,4 +1,12 @@
+module
+
+-- Core's log2 bodies are needed by the toNat_log2Clz proof below.
+import all Init.Data.Fin.Log2
+import all Init.Data.UInt.Log2
 import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
   Word-sized little-endian `ByteArray` loads and stores for the DEFLATE
@@ -148,8 +156,9 @@ def UInt32.log2Clz (x : UInt32) : UInt32 := x.log2
 @[simp] theorem UInt32.log2Clz_eq_log2 (x : UInt32) : x.log2Clz = x.log2 := rfl
 
 /-- Unboxing the result exposes exactly `Nat.log2` of the input word. -/
+-- Parentheses suppress a defeq tag, since core's log2 bodies are private.
 @[simp] theorem UInt32.toNat_log2Clz (x : UInt32) :
-    x.log2Clz.toNat = x.toNat.log2 := rfl
+    x.log2Clz.toNat = x.toNat.log2 := (rfl)
 
 /-- Count trailing zero bits of a `UInt64` (zero case defined as 64). This is the
     pure logical *specification* — its body is `BitVec.ctz`, kept for the

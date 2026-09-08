@@ -1,6 +1,10 @@
-import Zip.Spec.HuffmanTheorems
-import Zip.Spec.LZ77
-import Zip.Spec.DeflateStoredCorrect
+module
+
+public import Zip.Spec.HuffmanTheorems
+public import Zip.Spec.LZ77
+public import Zip.Spec.DeflateStoredCorrect
+
+@[expose] public section
 
 /-!
 # DEFLATE Bitstream Specification (RFC 1951)
@@ -255,17 +259,17 @@ def writeBitsLSB : Nat → Nat → List Bool
 /-! ## Stored block encoding -/
 
 /-- Convert a byte to 8 bits (LSB first), matching `bytesToBits.byteToBits`. -/
-private def byteToBitsSpec (b : UInt8) : List Bool :=
+def byteToBitsSpec (b : UInt8) : List Bool :=
   List.ofFn fun (i : Fin 8) => b.toNat.testBit i.val
 
 /-- Encode a natural number as 16 bits in LSB-first order.
     Uses `testBit` directly for easier proofs with `readBitsLSB_ofFn_testBit`. -/
-private def encodeLEU16 (v : Nat) : List Bool :=
+def encodeLEU16 (v : Nat) : List Bool :=
   List.ofFn fun (i : Fin 16) => v.testBit i.val
 
 /-- Encode one stored block (data must be at most 65535 bytes).
     Does NOT include BFINAL/BTYPE bits (those are emitted by the caller). -/
-private def encodeStoredBlock (data : List UInt8) : List Bool :=
+def encodeStoredBlock (data : List UInt8) : List Bool :=
   let len := data.length
   let nlen := len ^^^ 0xFFFF
   encodeLEU16 len ++ encodeLEU16 nlen ++ data.flatMap byteToBitsSpec

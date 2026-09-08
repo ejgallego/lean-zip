@@ -1,3 +1,6 @@
 /.lake
 /conformance/.lake
 /.direnv
+/.local-deps/
+/.beam/
+/bench/

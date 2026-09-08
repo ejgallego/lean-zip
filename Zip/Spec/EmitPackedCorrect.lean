@@ -1,4 +1,10 @@
-import Zip.Native.DeflateDynamic
+module
+
+public import Zip.Native.DeflateDynamic
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # Correctness of the packed-token emitters (Wave 3b stage C)

@@ -126,6 +126,8 @@ require "kim-em" / "lean-zip"
 The codec is pure Lean: no system libraries required.
 
 ```lean
+module
+
 import Zip
 
 -- Zlib format (RFC 1950)

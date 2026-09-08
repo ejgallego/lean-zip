@@ -1,4 +1,8 @@
-import Zip.Spec.LZ77ChainCorrect
+module
+
+public import Zip.Spec.LZ77ChainCorrect
+
+@[expose] public section
 
 /-!
 # Correctness of the lazy hash-chain LZ77 matcher (`lz77ChainLazy`)
@@ -166,12 +170,7 @@ theorem lz77ChainLazy_resolves (data : ByteArray) (maxChain windowSize insertCap
 
 /-! ## Encodability -/
 
-/-- The bounds the dynamic/fixed encoders require of every token. -/
-private def Enc (t : LZ77Token) : Prop :=
-  match t with
-  | .literal _ => True
-  | .reference len dist => 3 ≤ len ∧ len ≤ 258 ∧ 1 ≤ dist ∧ dist ≤ 32768
-
+-- Encodable is shared with the greedy matcher correctness interface.
 /-! `lz77ChainLazy.mainLoop`/`rollDefer` emit only encoder-legal tokens. Mirrors
     the validity tower: the rolling arm (`rollDefer_encodable`) reads the pending
     match's length/offset bounds from `RollPending` (chainWalk_spec's `Q`) plus
@@ -180,7 +179,7 @@ set_option backward.split false in
 mutual
 theorem lz77ChainLazy_mainLoop_encodable (data : ByteArray) (windowSize hashSize maxChain : Nat) (useH3 : Bool)
     (hashTable : Array Nat) (prev h3tab : Array Nat) (pos insertCap goodMatch niceLen lazyDepth lazy2Steps : Nat) (hw : windowSize > 0) (hws : windowSize ≤ 32768) :
-    ∀ t ∈ lz77ChainLazy.mainLoop data windowSize hashSize maxChain useH3 hashTable prev h3tab pos insertCap goodMatch niceLen lazyDepth lazy2Steps, Enc t := by
+    ∀ t ∈ lz77ChainLazy.mainLoop data windowSize hashSize maxChain useH3 hashTable prev h3tab pos insertCap goodMatch niceLen lazyDepth lazy2Steps, Encodable t := by
   unfold lz77ChainLazy.mainLoop
   split
   · rename_i hlt
@@ -269,7 +268,7 @@ theorem rollDefer_encodable (data : ByteArray) (windowSize hashSize maxChain : N
     (mp pLen pMatchPos step insertCap goodMatch niceLen lazyDepth lazy2Steps : Nat)
     (hpl : 3 ≤ pLen)
     (hQ : RollPending data windowSize mp pLen pMatchPos) (hw : windowSize > 0) (hws : windowSize ≤ 32768) :
-    ∀ t ∈ lz77ChainLazy.rollDefer data windowSize hashSize maxChain useH3 hashTable prev h3tab mp pLen pMatchPos step insertCap goodMatch niceLen lazyDepth lazy2Steps, Enc t := by
+    ∀ t ∈ lz77ChainLazy.rollDefer data windowSize hashSize maxChain useH3 hashTable prev h3tab mp pLen pMatchPos step insertCap goodMatch niceLen lazyDepth lazy2Steps, Encodable t := by
   obtain ⟨hq1, hq2, hq3, hq4, hq5⟩ := hQ
   have hmp : mp + pLen ≤ data.size := by omega
   unfold lz77ChainLazy.rollDefer
