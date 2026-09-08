@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! Build per-typeflag-policy regression fixtures for Track E Priority 1.
 

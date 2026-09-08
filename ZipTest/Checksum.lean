@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for FFI-based CRC32 and Adler32 checksums, including incremental updates and edge cases. -/
 

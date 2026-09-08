@@ -1,10 +1,14 @@
-import BenchTests.MinizOxide
-import BenchTests.Libdeflate
-import BenchTests.Zopfli
-import BenchTests.FuzzInflate
-import BenchTests.FuzzCompress
-import BenchTests.FuzzHandleRead
-import BenchTests.ReportTiming
+module
+
+public import BenchTests.MinizOxide
+public import BenchTests.Libdeflate
+public import BenchTests.Zopfli
+public import BenchTests.FuzzInflate
+public import BenchTests.FuzzCompress
+public import BenchTests.FuzzHandleRead
+public import BenchTests.ReportTiming
+
+public section
 
 /-! Dev-only conformance + fuzz test driver for the Track D comparators.
 

@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! # mid-sweep — mid-band (L4–L8) ladder knob sweep (#2737)
 

@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! # BitWriter wide-store kernel microbenchmark (issue #2631, step 0)
 

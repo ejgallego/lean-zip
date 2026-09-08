@@ -112,6 +112,8 @@ require "kim-em" / "lean-zip"
 ### Compression
 
 ```lean
+module
+
 import Zip
 
 -- Zlib format

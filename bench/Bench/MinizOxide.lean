@@ -1,3 +1,7 @@
+module
+
+public section
+
 /-! FFI bindings for [`miniz_oxide`](https://crates.io/crates/miniz_oxide), the
     pure-Rust reimplementation of miniz. Used by the Track D bench harness
     as a runtime/ratio comparator alongside zlib, libdeflate, and zopfli;

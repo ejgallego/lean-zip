@@ -1,4 +1,8 @@
-import Zip.Native.Inflate
+module
+
+public import Zip.Native.Inflate
+
+public section
 
 /-!
 # Build-cost micro-benchmark: tree+table vs tree-free canonical table

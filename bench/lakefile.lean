@@ -250,6 +250,7 @@ def ltoLinkFlags : IO (Array String) := do
   return #["-flto", "-fno-semantic-interposition", "-O3"]
 
 package «lean-zip-bench» where
+  requiresModuleSystem := true
   moreLinkArgs := run_io do return (← linkFlags) ++ (← ltoLinkFlags)
 
 require «lean-zip» from ".."

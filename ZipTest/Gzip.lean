@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for gzip compression/decompression: streaming, file I/O, compression levels,
     and concatenated streams. -/

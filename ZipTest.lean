@@ -1,34 +1,39 @@
-import ZipTest.BenchHelpers
-import ZipTest.Zlib
-import ZipTest.Gzip
-import ZipTest.RawDeflate
-import ZipTest.Checksum
-import ZipTest.Binary
-import ZipTest.Wide
-import ZipTest.ExtendWithin
-import ZipTest.Tar
-import ZipTest.Archive
-import ZipTest.ZipFixtures
-import ZipTest.TarFixtures
-import ZipTest.TarPathTruncation
-import ZipTest.CompressFixtures
-import ZipTest.Utf8Fixtures
-import ZipTest.NativeChecksum
-import ZipTest.NativeInflate
-import ZipTest.InflateFast
-import ZipTest.NativeGzip
-import ZipTest.NativeIntegration
-import ZipTest.NativeScale
-import ZipTest.NativeDeflate
-import ZipTest.NativeCompressBench
-import ZipTest.Benchmark
-import ZipTest.BoundedReadTest
-import ZipTest.InflateTable
-import ZipTest.OptimalParse
-import ZipTest.PackedTokens
-import ZipTest.PackedHeads
-import ZipTest.SizeHelpers
-import ZipTest.L7Adaptive
+module
+
+import ZipModuleTests.PublicApi
+public import ZipTest.BenchHelpers
+public import ZipTest.Zlib
+public import ZipTest.Gzip
+public import ZipTest.RawDeflate
+public import ZipTest.Checksum
+public import ZipTest.Binary
+public import ZipTest.Wide
+public import ZipTest.ExtendWithin
+public import ZipTest.Tar
+public import ZipTest.Archive
+public import ZipTest.ZipFixtures
+public import ZipTest.TarFixtures
+public import ZipTest.TarPathTruncation
+public import ZipTest.CompressFixtures
+public import ZipTest.Utf8Fixtures
+public import ZipTest.NativeChecksum
+public import ZipTest.NativeInflate
+public import ZipTest.InflateFast
+public import ZipTest.NativeGzip
+public import ZipTest.NativeIntegration
+public import ZipTest.NativeScale
+public import ZipTest.NativeDeflate
+public import ZipTest.NativeCompressBench
+public import ZipTest.Benchmark
+public import ZipTest.BoundedReadTest
+public import ZipTest.InflateTable
+public import ZipTest.OptimalParse
+public import ZipTest.PackedTokens
+public import ZipTest.PackedHeads
+public import ZipTest.SizeHelpers
+public import ZipTest.L7Adaptive
+
+public section
 
 def main : IO Unit := do
   unless ← System.FilePath.pathExists "testdata" do

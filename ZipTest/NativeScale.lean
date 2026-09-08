@@ -1,10 +1,14 @@
-import ZipTest.Helpers
-import ZipTest.BenchHelpers
-import Zip.Native.Inflate
-import Zip.Native.Gzip
-import Zip.Native.DeflateDynamic
-import Zip.Native.Crc32
-import Zip.Native.Adler32
+module
+
+public import ZipTest.Helpers
+public import ZipTest.BenchHelpers
+public import Zip.Native.Inflate
+public import Zip.Native.Gzip
+public import Zip.Native.DeflateDynamic
+public import Zip.Native.Crc32
+public import Zip.Native.Adler32
+
+public section
 
 /-! Performance and conformance tests for native inflate/deflate, gzip, zlib, and
     checksums across varying data sizes and compression patterns. Includes both

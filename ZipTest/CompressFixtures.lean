@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for gzip decompression with real-world interop fixtures and malformed data. -/
 

@@ -1,7 +1,11 @@
-import ZipCommon.Binary
-import Zip.Gzip
-import ZipCommon.Handle
-import Zip.Native.Gzip
+module
+
+public import ZipCommon.Binary
+public import Zip.Gzip
+public import ZipCommon.Handle
+public import Zip.Native.Gzip
+
+@[expose] public section
 
 /-! Tar archive creation, listing, and extraction with UStar, GNU, and PAX format support.
     Includes tar.gz compression/decompression via gzip integration. -/
@@ -41,20 +45,20 @@ def typePaxExtended : UInt8 := 0x78  -- 'x'
 def typePaxGlobal : UInt8 := 0x67  -- 'g'
 
 -- UStar header field offsets and sizes
-private def hdrName     := (0, 100)
-private def hdrMode     := (100, 8)
-private def hdrUid      := (108, 8)
-private def hdrGid      := (116, 8)
-private def hdrSize     := (124, 12)
-private def hdrMtime    := (136, 12)
-private def hdrChksum   := (148, 8)
-private def hdrTypeflag := (156, 1)
-private def hdrLinkname := (157, 100)
-private def hdrMagic    := (257, 6)
-private def hdrVersion  := (263, 2)
-private def hdrUname    := (265, 32)
-private def hdrGname    := (297, 32)
-private def hdrPrefix   := (345, 155)
+def hdrName     := (0, 100)
+def hdrMode     := (100, 8)
+def hdrUid      := (108, 8)
+def hdrGid      := (116, 8)
+def hdrSize     := (124, 12)
+def hdrMtime    := (136, 12)
+def hdrChksum   := (148, 8)
+def hdrTypeflag := (156, 1)
+def hdrLinkname := (157, 100)
+def hdrMagic    := (257, 6)
+def hdrVersion  := (263, 2)
+def hdrUname    := (265, 32)
+def hdrGname    := (297, 32)
+def hdrPrefix   := (345, 155)
 
 /-- Read a numeric field from a tar header. Handles both octal ASCII (standard)
     and GNU base-256 encoding (high bit set in first byte). -/
@@ -215,7 +219,7 @@ def truncateUTF8 (s : String) (maxBytes : Nat) : String :=
 
 /-- Read exactly `n` bytes from a stream, looping on short reads.
     Returns fewer bytes only at true EOF. -/
-private partial def readExact (input : IO.FS.Stream) (n : Nat) : IO ByteArray := do
+partial def readExact (input : IO.FS.Stream) (n : Nat) : IO ByteArray := do
   let mut buf := ByteArray.empty
   while buf.size < n do
     let remaining := n - buf.size
@@ -246,7 +250,7 @@ def defaultMaxHeaderSize : Nat := 8 * 1024 * 1024
     the substring `"exceeds maximum header size"`. The payload-bearing
     `Tar.extract` regular-file path uses its own open-coded loop and is
     not affected by this cap (see `Zip/Tar.lean` regular-file branch). -/
-private partial def readEntryData (input : IO.FS.Stream) (size : Nat)
+partial def readEntryData (input : IO.FS.Stream) (size : Nat)
     (maxHeaderSize : Nat := defaultMaxHeaderSize) : IO ByteArray := do
   if size > maxHeaderSize then
     throw (IO.userError s!"tar: header entry size ({size}) exceeds maximum header size ({maxHeaderSize})")
@@ -349,10 +353,10 @@ def splitPath (path : String) : Option (String × String) := Id.run do
   return sum
 
 -- Helper to write fields into a header at a given offset
-private def writeField := Binary.writeField
+def writeField := Binary.writeField
 
 -- Maximum value representable in an 11-digit octal field (used by size/mtime)
-private def maxOctalValue : UInt64 := 0o77777777777  -- 8589934591
+def maxOctalValue : UInt64 := 0o77777777777  -- 8589934591
 
 /-- Build a 512-byte UStar header. If `pathOverride` is provided, it is used instead of
     `entry.path` (which may exceed UStar limits if a PAX header precedes this). -/
@@ -457,7 +461,7 @@ def buildPaxEntry (paxData : ByteArray) (entryPath : String) : IO ByteArray := d
     Trailing NUL padding is permitted (it terminates the C-style field), so
     a leading run of meaningful bytes followed by NUL padding returns `false`;
     only a NUL with non-NUL payload after it counts as smuggling. -/
-private def hasInteriorNul (block : ByteArray) (offset len : Nat) : Bool := Id.run do
+def hasInteriorNul (block : ByteArray) (offset len : Nat) : Bool := Id.run do
   let mut sawNul := false
   for hi : i in [:len] do
     if h : offset + i < block.size then
@@ -616,7 +620,7 @@ partial def createFromDir (output : IO.FS.Stream) (dir : System.FilePath) : IO U
   create output dir sorted
 
 /-- Strip trailing NUL bytes from a byte array. -/
-private def stripTrailingNuls (data : ByteArray) : ByteArray :=
+def stripTrailingNuls (data : ByteArray) : ByteArray :=
   let n := Id.run do
     let mut n := data.size
     while n > 0 do
@@ -627,7 +631,7 @@ private def stripTrailingNuls (data : ByteArray) : ByteArray :=
   data.extract 0 n
 
 /-- Skip past entry data and padding in the input stream. -/
-private partial def skipEntryData (input : IO.FS.Stream) (size : UInt64) : IO Unit := do
+partial def skipEntryData (input : IO.FS.Stream) (size : UInt64) : IO Unit := do
   let dataSize := size.toNat + paddingFor size
   let mut skipped := 0
   while skipped < dataSize do
@@ -646,7 +650,7 @@ private partial def skipEntryData (input : IO.FS.Stream) (size : UInt64) : IO Un
     `defaultMaxHeaderSize` for the rationale behind the default. The
     cap is independent of `Tar.extract`'s `maxEntrySize`, which only
     bounds payload-bearing entries. -/
-private partial def forEntries (input : IO.FS.Stream)
+partial def forEntries (input : IO.FS.Stream)
     (f : Entry → IO Unit)
     (maxHeaderSize : Nat := defaultMaxHeaderSize) : IO Unit := do
   let mut gnuLongName : Option String := none

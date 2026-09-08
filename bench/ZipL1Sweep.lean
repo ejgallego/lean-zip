@@ -1,4 +1,9 @@
-import Zip
+module
+
+public import Zip
+
+public section
+
 /-! # Fast-L1 matcher-policy sweep (issue #2726, candidate A)
 
 For each Silesia file and each `(chainDepth, insertCap)` config, measure the

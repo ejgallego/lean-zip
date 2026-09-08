@@ -1,8 +1,14 @@
-import Zip.Spec.EmitPackedCorrect
-import Zip.Spec.BitWriterCorrect
-import Zip.Spec.DeflateDynamicEmit
-import Zip.Spec.DeflateDynamicHeader
-import Zip.Spec.DeflateDynamicFreqs
+module
+
+public import Zip.Spec.EmitPackedCorrect
+public import Zip.Spec.BitWriterCorrect
+public import Zip.Spec.DeflateDynamicEmit
+public import Zip.Spec.DeflateDynamicHeader
+public import Zip.Spec.DeflateDynamicFreqs
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # Correctness of flat-state packed token emission

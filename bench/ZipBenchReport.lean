@@ -1,8 +1,13 @@
-import Zip
-import Bench.MinizOxide
-import Bench.Libdeflate
-import Bench.Zopfli
-import Bench.ReportTiming
+module
+
+public import Zip
+public import Bench.MinizOxide
+public import Bench.Libdeflate
+public import Bench.Zopfli
+public import Bench.ReportTiming
+
+public section
+
 /-! # Track D benchmark report (JSON emitter)
 
 Runs the full compress/decompress matrix — native lean-zip vs each reference

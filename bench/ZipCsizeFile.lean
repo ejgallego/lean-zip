@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! Scratch: deterministic `deflateRaw` output size + fold checksum over a file,
     for byte-identity comparison across branches (rung-4 #2837). Not committed. -/

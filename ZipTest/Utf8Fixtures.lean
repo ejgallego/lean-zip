@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Security and encoding tests: path traversal prevention, UTF-8 flag handling,
     and Latin-1 fallback in ZIP/tar archives. -/

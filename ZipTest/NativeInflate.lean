@@ -1,5 +1,9 @@
-import ZipTest.Helpers
-import Zip.Native.Inflate
+module
+
+public import ZipTest.Helpers
+public import Zip.Native.Inflate
+
+public section
 
 /-! Tests for native inflate (raw DEFLATE decompression) against FFI-compressed data
     across compression levels and block types. -/

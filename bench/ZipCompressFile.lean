@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! # `compress-file` — the honest lean side of the end-to-end CLI comparison
 

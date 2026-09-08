@@ -1,11 +1,17 @@
-import ZipCommon.Binary
-import Zip.Checksum
-import ZipCommon.Handle
-import Zip.RawDeflate
-import Zip.Native.Inflate
-import Zip.Native.InflateTreeFree
-import Zip.Native.InflateFast
-import Zip.Native.Crc32
+module
+
+-- The span-check proofs evaluate IO actions at the underlying EST state.
+import all Init.System.ST
+public import ZipCommon.Binary
+public import Zip.Checksum
+public import ZipCommon.Handle
+public import Zip.RawDeflate
+public import Zip.Native.Inflate
+public import Zip.Native.InflateTreeFree
+public import Zip.Native.InflateFast
+public import Zip.Native.Crc32
+
+@[expose] public section
 
 /-! ZIP archive construction and extraction: entry metadata, local/central headers,
     ZIP64 support, and streaming archive creation/extraction. -/
@@ -13,16 +19,16 @@ import Zip.Native.Crc32
 namespace Archive
 
 -- ZIP signatures
-private def sigLocal    : UInt32 := 0x04034b50
-private def sigCentral  : UInt32 := 0x02014b50
-private def sigEOCD     : UInt32 := 0x06054b50
-private def sigEOCD64   : UInt32 := 0x06064b50
-private def sigLocator64 : UInt32 := 0x07064b50
+def sigLocal    : UInt32 := 0x04034b50
+def sigCentral  : UInt32 := 0x02014b50
+def sigEOCD     : UInt32 := 0x06054b50
+def sigEOCD64   : UInt32 := 0x06064b50
+def sigLocator64 : UInt32 := 0x07064b50
 
 -- Sentinel values indicating ZIP64 is needed
-private def val32Max : UInt32 := 0xFFFFFFFF
-private def val16Max : UInt16 := 0xFFFF
-private def dataDescriptorBitMask : UInt16 := 0xFFF7  -- CD/LH flag comparison: all bits except bit 3 (data-descriptor presence is a per-LH concern)
+def val32Max : UInt32 := 0xFFFFFFFF
+def val16Max : UInt16 := 0xFFFF
+def dataDescriptorBitMask : UInt16 := 0xFFF7  -- CD/LH flag comparison: all bits except bit 3 (data-descriptor presence is a per-LH concern)
 
 /-- ZIP entry metadata. Sizes and offsets are 64-bit to support ZIP64. -/
 structure Entry where
@@ -55,17 +61,17 @@ structure Entry where
   deriving Repr, Inhabited
 
 /-- Check if an entry needs ZIP64 extra fields. -/
-private def needsZip64 (entry : Entry) : Bool :=
+def needsZip64 (entry : Entry) : Bool :=
   entry.compressedSize >= val32Max.toUInt64 ||
   entry.uncompressedSize >= val32Max.toUInt64 ||
   entry.localOffset >= val32Max.toUInt64
 
 -- DOS date/time encoding (minimal: default to 1980-01-01 00:00:00)
-private def defaultDosTime : UInt16 := 0
-private def defaultDosDate : UInt16 := 0x0021  -- 1980-01-01
+def defaultDosTime : UInt16 := 0
+def defaultDosDate : UInt16 := 0x0021  -- 1980-01-01
 
 /-- Build a ZIP64 extra field for a local file header (sizes only, no offset). -/
-private def writeZip64ExtraLocal (entry : Entry) : ByteArray :=
+def writeZip64ExtraLocal (entry : Entry) : ByteArray :=
   Binary.zeros 20
   |> (Binary.writeUInt16LEAt · 0 0x0001)
   |> (Binary.writeUInt16LEAt · 2 16)
@@ -73,7 +79,7 @@ private def writeZip64ExtraLocal (entry : Entry) : ByteArray :=
   |> (Binary.writeUInt64LEAt · 12 entry.compressedSize)
 
 /-- Build a ZIP64 extra field for a central directory header (sizes + offset). -/
-private def writeZip64ExtraCentral (entry : Entry) : ByteArray :=
+def writeZip64ExtraCentral (entry : Entry) : ByteArray :=
   Binary.zeros 28
   |> (Binary.writeUInt16LEAt · 0 0x0001)
   |> (Binary.writeUInt16LEAt · 2 24)
@@ -82,7 +88,7 @@ private def writeZip64ExtraCentral (entry : Entry) : ByteArray :=
   |> (Binary.writeUInt64LEAt · 20 entry.localOffset)
 
 /-- Write a local file header. Returns the header bytes. -/
-private def writeLocalHeader (entry : Entry) : ByteArray := Id.run do
+def writeLocalHeader (entry : Entry) : ByteArray := Id.run do
   let nameBytes := entry.path.toUTF8
   let z64 := needsZip64 entry
   let extraField := if z64 then writeZip64ExtraLocal entry else ByteArray.empty
@@ -108,7 +114,7 @@ private def writeLocalHeader (entry : Entry) : ByteArray := Id.run do
   return buf
 
 /-- Write a central directory header. Returns the header bytes. -/
-private def writeCentralHeader (entry : Entry) : ByteArray := Id.run do
+def writeCentralHeader (entry : Entry) : ByteArray := Id.run do
   let nameBytes := entry.path.toUTF8
   let z64 := needsZip64 entry
   let extraField := if z64 then writeZip64ExtraCentral entry else ByteArray.empty
@@ -141,7 +147,7 @@ private def writeCentralHeader (entry : Entry) : ByteArray := Id.run do
   return buf
 
 /-- Write end of central directory records. Includes ZIP64 EOCD + locator when needed. -/
-private def writeEndRecords (numEntries : Nat) (cdSize cdOffset : UInt64) : ByteArray := Id.run do
+def writeEndRecords (numEntries : Nat) (cdSize cdOffset : UInt64) : ByteArray := Id.run do
   let need64 := numEntries > 65535 || cdSize >= val32Max.toUInt64 || cdOffset >= val32Max.toUInt64
   -- ZIP64 EOCD (56) + ZIP64 Locator (20) + Standard EOCD (22)
   let z64Size := if need64 then 76 else 0
@@ -266,7 +272,7 @@ partial def createFromDir (outputPath : System.FilePath) (dir : System.FilePath)
     self-declared `size of zip64 end of central directory record` field
     (APPNOTE §4.3.14, at `bufPos + 4`) is not exactly `44` — the v1
     EOCD64 shape lean-zip produces and consumes. -/
-private def findEndOfCentralDir (data : ByteArray) (baseOffset : Nat := 0)
+def findEndOfCentralDir (data : ByteArray) (baseOffset : Nat := 0)
     : IO (Option (Nat × Nat × Nat × Nat × Nat × Nat × Nat)) := do
   -- Find standard EOCD
   if data.size < 22 then return none
@@ -431,7 +437,7 @@ private def findEndOfCentralDir (data : ByteArray) (baseOffset : Nat := 0)
     entirely) and misattributed to ZIP64-field resolution in the
     sentinel case. A malformed sub-field header is a parser-differential
     smuggling vector independent of ZIP64. -/
-private def validateExtraFieldStructure (extraData : ByteArray) : Bool := Id.run do
+def validateExtraFieldStructure (extraData : ByteArray) : Bool := Id.run do
   let mut epos := 0
   while epos + 4 <= extraData.size do
     let dataSize := (Binary.readUInt16LE extraData (epos + 2)).toNat
@@ -448,7 +454,7 @@ private def validateExtraFieldStructure (extraData : ByteArray) : Bool := Id.run
     differential vector where two well-formed 0x0001 blocks let a
     "first-wins" reader (lean-zip pre-fix) and a "last-wins" reader
     disagree on the resolved sizes/offset for the same bytes. -/
-private def hasDuplicateZip64Extra (extraData : ByteArray) : Bool := Id.run do
+def hasDuplicateZip64Extra (extraData : ByteArray) : Bool := Id.run do
   let mut epos := 0
   let mut seen := false
   while epos + 4 <= extraData.size do
@@ -463,7 +469,7 @@ private def hasDuplicateZip64Extra (extraData : ByteArray) : Bool := Id.run do
 /-- Parse a ZIP64 extra field from extra data, returning (uncompressedSize, compressedSize, offset).
     Only reads fields whose standard values are 0xFFFFFFFF. Returns `none` if a required field
     is missing from the ZIP64 extra data. -/
-private def parseZip64Extra (extraData : ByteArray) (stdUncomp stdComp stdOffset : UInt32)
+def parseZip64Extra (extraData : ByteArray) (stdUncomp stdComp stdOffset : UInt32)
     : Option (UInt64 × UInt64 × UInt64) := Id.run do
   let mut uncompSize := stdUncomp.toUInt64
   let mut compSize := stdComp.toUInt64
@@ -509,7 +515,7 @@ private def parseZip64Extra (extraData : ByteArray) (stdUncomp stdComp stdOffset
     the CD's position in the *source file*, which the per-entry
     `localOffset + 30 ≤ cdFileOffset` archive-layout guard compares
     against. -/
-private def parseCentralDir (data : ByteArray)
+def parseCentralDir (data : ByteArray)
     (cdOffset cdSize declaredEntries numberOfThisDisk diskWhereCDStarts
       entriesThisDisk cdFileOffset : Nat)
     : IO (Array Entry) := do
@@ -903,7 +909,7 @@ private def parseCentralDir (data : ByteArray)
     `offset + length > fileSize`. The overflow case is subsumed by comparing
     `length` against the saturating remainder `fileSize - offset`, which only
     takes a meaningful value once `offset ≤ fileSize`. -/
-private def assertSpanInFile (fileSize offset length : UInt64) (what : String) : IO Unit := do
+def assertSpanInFile (fileSize offset length : UInt64) (what : String) : IO Unit := do
   if offset > fileSize then
     throw (IO.userError
       s!"zip: {what} offset ({offset}) exceeds file size ({fileSize})")
@@ -1003,7 +1009,7 @@ theorem SpanInFile.toNat_length_le_remaining
 
 /-- Read exactly `n` bytes from a handle, throwing on short read.
     Loops to handle short reads from pipes/network streams. -/
-private partial def readExact (h : IO.FS.Handle) (n : Nat) (what : String) : IO ByteArray := do
+partial def readExact (h : IO.FS.Handle) (n : Nat) (what : String) : IO ByteArray := do
   unless n.toUSize.toNat == n do
     throw (IO.userError s!"zip: {what} size {n} exceeds addressable range")
   let mut buf := ByteArray.empty
@@ -1068,7 +1074,7 @@ def readBoundedExactFromHandle (h : IO.FS.Handle)
 
 /-- Read entries from a file handle by seeking to the tail, EOCD, and central directory.
     Memory usage: O(65KB + central directory size). -/
-private def listFromHandle (h : IO.FS.Handle) (maxCentralDirSize : Nat := 67108864) : IO (Array Entry) := do
+def listFromHandle (h : IO.FS.Handle) (maxCentralDirSize : Nat := 67108864) : IO (Array Entry) := do
   let fileSize := (← Handle.fileSize h).toNat
   -- Read tail (last 65558 bytes) to find EOCD
   -- 65558 = 22 (min EOCD) + 65535 (max comment) + 1
@@ -1103,7 +1109,7 @@ def nativePresizeCap : Nat := 64 * 1024 * 1024
     backend. Both public extractors default `maxEntrySize` to `1 GiB` and
     always pass the value through explicitly, so this helper has no default.
     When `useNative` is true, uses the pure Lean DEFLATE decompressor and CRC-32. -/
-private def readEntryData (h : IO.FS.Handle) (entry : Entry) (label : String)
+def readEntryData (h : IO.FS.Handle) (entry : Entry) (label : String)
     (maxEntrySize : UInt64) (useNative : Bool := false) : IO ByteArray := do
   if maxEntrySize > 0 && entry.uncompressedSize > maxEntrySize then
     throw (IO.userError s!"zip: entry '{label}' uncompressed size ({entry.uncompressedSize}) exceeds limit ({maxEntrySize})")

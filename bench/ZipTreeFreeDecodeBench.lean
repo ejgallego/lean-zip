@@ -1,5 +1,9 @@
-import Zip.Native.InflateTreeFree
-import Zip
+module
+
+public import Zip.Native.InflateTreeFree
+public import Zip
+
+public section
 
 /-!
 # End-to-end tree-free decode: conformance + benchmark

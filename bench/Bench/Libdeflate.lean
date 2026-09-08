@@ -1,3 +1,7 @@
+module
+
+public section
+
 /-! # libdeflate FFI (Track D reference comparator)
 
 Bindings to the [libdeflate](https://github.com/ebiggers/libdeflate) C library —

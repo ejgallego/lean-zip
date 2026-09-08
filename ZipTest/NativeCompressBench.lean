@@ -1,7 +1,11 @@
-import ZipTest.Helpers
-import ZipTest.BenchHelpers
-import Zip.Native.Inflate
-import Zip.Native.Gzip
+module
+
+public import ZipTest.Helpers
+public import ZipTest.BenchHelpers
+public import Zip.Native.Inflate
+public import Zip.Native.Gzip
+
+public section
 
 /-! Compression throughput and ratio benchmarks: native Lean compressor vs FFI (zlib).
     Covers raw deflate, gzip, and zlib formats at levels 0, 1, and 6

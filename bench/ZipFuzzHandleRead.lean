@@ -1,4 +1,8 @@
-import BenchTests.FuzzHandleRead
+module
+
+public import BenchTests.FuzzHandleRead
+
+public section
 
 /-! Lake executable driver for the `Handle.read` / `Stream.read`
 fuzz harness.

@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for zlib compression/decompression with decompression size limits and roundtrip verification. -/
 

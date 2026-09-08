@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for ZIP archive creation, listing, and extraction with compression method selection. -/
 

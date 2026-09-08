@@ -1,6 +1,12 @@
-import Zip.Spec.BitstreamCorrect
-import Zip.Spec.HuffmanCorrect
-import Zip.Spec.ReadBitsFastCorrect
+module
+
+public import Zip.Spec.BitstreamCorrect
+public import Zip.Spec.HuffmanCorrect
+public import Zip.Spec.ReadBitsFastCorrect
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # Table-driven Huffman decode: equivalence to the tree walk

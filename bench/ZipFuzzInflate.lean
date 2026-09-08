@@ -1,4 +1,8 @@
-import BenchTests.FuzzInflate
+module
+
+public import BenchTests.FuzzInflate
+
+public section
 
 /-! Lake executable driver for the inflate fuzz harness.
 

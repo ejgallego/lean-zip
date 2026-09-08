@@ -1,4 +1,8 @@
-import Zip.Gzip
+module
+
+public import Zip.Gzip
+
+@[expose] public section
 
 /-! FFI bindings for raw DEFLATE compression/decompression (no framing headers),
     used by ZIP archives (method 8). -/

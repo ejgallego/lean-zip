@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for ZIP interop: stored/deflated methods, ZIP64, multi-entry archives,
     and malformed/security fixtures. -/

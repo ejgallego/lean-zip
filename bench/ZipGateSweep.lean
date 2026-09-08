@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! # gate-sweep — lazy-gate/probe-depth sweep, now regridding the L5 slot
 

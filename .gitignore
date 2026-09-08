@@ -1,6 +1,8 @@
 /build
 /lake-packages
 /.lake
+/.local-deps/
+/.beam/
 /bench/.lake
 /.direnv
 /sessions

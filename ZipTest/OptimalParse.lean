@@ -1,7 +1,11 @@
-import ZipTest.Helpers
-import Zip.Native.DeflateParse
-import Zip.Native.DeflateDynamic
-import Zip.Native.Inflate
+module
+
+public import ZipTest.Helpers
+public import Zip.Native.DeflateParse
+public import Zip.Native.DeflateDynamic
+public import Zip.Native.Inflate
+
+public section
 
 /-! Tests for the near-optimal parsing support (#2496): candidate cache and
     cost model. The cache and cost tables are pure heuristics (they never

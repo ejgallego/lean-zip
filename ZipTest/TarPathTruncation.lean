@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Regression tests for codepoint-boundary truncation of UTF-8 paths in
     the tar writer (`Tar.truncateUTF8`) and for the end-to-end writer/

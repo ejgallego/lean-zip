@@ -1,3 +1,7 @@
+module
+
+public section
+
 /-! Shared formatting and timing helpers for benchmark files.
 
     Consolidates `pad`, `fmtMs`, `fmtMBps`, `fmtRatio`, `forceEval`, and

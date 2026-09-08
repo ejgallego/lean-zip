@@ -1,4 +1,9 @@
-import Zip
+module
+
+public import Zip
+
+public section
+
 /-! # Stage-0 ceiling probe: fuse token-frequency counting into the greedy matcher
 
 Bench-only scratch (issue: `perf/freq-fusion`). `tokenFreqsP` is a full second

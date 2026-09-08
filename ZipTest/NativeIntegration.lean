@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! End-to-end integration tests for native ZIP and tar.gz extraction against FFI-created archives. -/
 

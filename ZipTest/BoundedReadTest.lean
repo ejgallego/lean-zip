@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Smoke tests for Track E P5.1 bounded-read helpers: exercises each of
     `Archive.readBoundedSpanFromHandle`, `Archive.readBoundedExactFromHandle`,

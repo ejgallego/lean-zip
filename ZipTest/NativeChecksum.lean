@@ -1,6 +1,10 @@
-import ZipTest.Helpers
-import Zip.Native.Adler32
-import Zip.Native.Crc32
+module
+
+public import ZipTest.Helpers
+public import Zip.Native.Adler32
+public import Zip.Native.Crc32
+
+public section
 
 /-! Conformance tests comparing native Adler32 and CRC32 implementations against FFI. -/
 

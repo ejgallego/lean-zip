@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! # rung-4 acceptance — production rolling loop == certified spike (#2837)
 

@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for tar archive creation, listing, extraction, tar.gz roundtrips, and PAX record parsing. -/
 

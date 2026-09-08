@@ -1,4 +1,9 @@
-import Zip
+module
+
+public import Zip
+
+public section
+
 /-! # Huffman code-length build microbench (issue #2761)
 
 Times the per-block dynamic-Huffman code-length construction — the hot cluster

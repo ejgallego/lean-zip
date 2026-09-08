@@ -1,5 +1,9 @@
-import ZipTest.Helpers
-import Zip.Native.InflateFast
+module
+
+public import ZipTest.Helpers
+public import Zip.Native.InflateFast
+
+public section
 
 /-! Conformance tests for the write-once cursor decode (issue #2799).
 

@@ -1,5 +1,9 @@
-import ZipTest.Helpers
-import Bench.Libdeflate
+module
+
+public import ZipTest.Helpers
+public import Bench.Libdeflate
+
+public section
 
 /-! Smoke tests for the Track D libdeflate comparator.
 

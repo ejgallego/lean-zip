@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! Build malformed UStar header regression fixtures for Track E.
 

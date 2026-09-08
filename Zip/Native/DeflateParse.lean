@@ -1,5 +1,9 @@
-import Zip.Native.Deflate
-import Zip.Native.DeflateFreqs
+module
+
+public import Zip.Native.Deflate
+public import Zip.Native.DeflateFreqs
+
+@[expose] public section
 
 /-!
   Near-optimal LZ parsing support (#2496), part 1: the per-position
@@ -408,7 +412,7 @@ termination_by base.size - i
 decreasing_by omega
 
 /-- Fill the 256-entry literal cost table: `table[b] = costOfLen lens[b]`. -/
-private def litCostLoop (lens table : Array Nat) (b : Nat) (hlen : 256 ≤ lens.size) :
+def litCostLoop (lens table : Array Nat) (b : Nat) (hlen : 256 ≤ lens.size) :
     Array Nat :=
   if hb : b < 256 then
     litCostLoop lens (table.set! b (costOfLen (lens[b]'(by omega)))) (b + 1) hlen
@@ -722,16 +726,16 @@ def fillRegionRounds (data : ByteArray) (depth slots niceSkip base r : Nat)
     rw [seedTailCosts_size, Array.size_replicate]; omega
   let res1 := fillRegion data base r slots cacheLens cacheDists
     slit slen sdist r cost chLen chDist hr hslit hcost1 (Nat.le_refl r) hcl hcd
-  have hchL1 : data.size ≤ res1.1.size :=
-    Nat.le_trans hchL (Nat.le_of_eq (fillRegion_fst_size data base r slots cacheLens cacheDists
+  have hchL1 : data.size ≤ res1.1.size := by
+    exact Nat.le_trans hchL (Nat.le_of_eq (fillRegion_fst_size data base r slots cacheLens cacheDists
       slit slen sdist r cost chLen chDist hr hslit hcost1 (Nat.le_refl r) hcl hcd).symm)
-  have hchD1 : data.size ≤ res1.2.size :=
-    Nat.le_trans hchD (Nat.le_of_eq (fillRegion_snd_size data base r slots cacheLens cacheDists
+  have hchD1 : data.size ≤ res1.2.size := by
+    exact Nat.le_trans hchD (Nat.le_of_eq (fillRegion_snd_size data base r slots cacheLens cacheDists
       slit slen sdist r cost chLen chDist hr hslit hcost1 (Nat.le_refl r) hcl hcd).symm)
   -- round 2: refit to this region's round-1 parse
   let toks := collectRegionTokens data res1.1 res1.2 (base + r) base #[] hchL1 hchD1
   let fitted := fittedCostTables toks
-  have hflit : 256 ≤ fitted.1.size := Nat.le_of_eq (fittedCostTables_fst_size toks).symm
+  have hflit : 256 ≤ fitted.1.size := by exact Nat.le_of_eq (fittedCostTables_fst_size toks).symm
   let cost2 := seedTailCosts (Array.replicate (r + 259) 0) r (avgLitBits fitted.1) 0
   have hcost2 : r + 259 ≤ cost2.size := by
     show r + 259 ≤ (seedTailCosts (Array.replicate (r + 259) 0) r (avgLitBits fitted.1) 0).size
@@ -772,10 +776,10 @@ private theorem fillRegionRounds_chDist_size (data : ByteArray) (depth slots nic
     well-founded elaborator try to reduce the `fillRegionRounds` scrutinee and
     diverge. With `fuel = data.size` (≥ the region count, since each region
     advances `base` by `r ≥ 1`) the guard always fails before fuel runs out, so
-    the result is identical to the unfueled loop. Marked `private`: the fuel
-    parameter is a footgun (too little fuel silently yields a partial fill), so
-    only `computeChoices` (which passes `data.size`) may call it. -/
-private def computeChoicesLoop (data : ByteArray) (depth slots niceSkip regionSize : Nat)
+    the result is identical to the unfueled loop. This helper is public to expose
+    `computeChoices`'s definition; callers should use `computeChoices`, which
+    supplies `data.size`, since insufficient fuel silently yields a partial fill. -/
+def computeChoicesLoop (data : ByteArray) (depth slots niceSkip regionSize : Nat)
     (slit slen sdist : Array Nat) (hashTable : Array Nat) (prev : Array Nat)
     (h3tab : Array Nat) (base : Nat)
     (chLen chDist : Array Nat) (hslit : 256 ≤ slit.size)
@@ -789,12 +793,14 @@ private def computeChoicesLoop (data : ByteArray) (depth slots niceSkip regionSi
       have hr : base + r ≤ data.size := by omega
       let result := fillRegionRounds data depth slots niceSkip base r
         slit slen sdist hashTable prev h3tab chLen chDist hr hslit hchL hchD
-      have hchL' : data.size ≤ result.2.2.2.1.size := Nat.le_trans hchL
-        (Nat.le_of_eq (fillRegionRounds_chLen_size data depth slots niceSkip base r slit slen sdist
-          hashTable prev h3tab chLen chDist hr hslit hchL hchD).symm)
-      have hchD' : data.size ≤ result.2.2.2.2.size := Nat.le_trans hchD
-        (Nat.le_of_eq (fillRegionRounds_chDist_size data depth slots niceSkip base r slit slen sdist
-          hashTable prev h3tab chLen chDist hr hslit hchL hchD).symm)
+      have hchL' : data.size ≤ result.2.2.2.1.size := by
+        exact Nat.le_trans hchL
+          (Nat.le_of_eq (fillRegionRounds_chLen_size data depth slots niceSkip base r slit slen sdist
+            hashTable prev h3tab chLen chDist hr hslit hchL hchD).symm)
+      have hchD' : data.size ≤ result.2.2.2.2.size := by
+        exact Nat.le_trans hchD
+          (Nat.le_of_eq (fillRegionRounds_chDist_size data depth slots niceSkip base r slit slen sdist
+            hashTable prev h3tab chLen chDist hr hslit hchL hchD).symm)
       computeChoicesLoop data depth slots niceSkip regionSize slit slen sdist result.1 result.2.1
         result.2.2.1 (base + r) result.2.2.2.1 result.2.2.2.2 hslit hchL' hchD' fuel
     else (chLen, chDist)
@@ -995,7 +1001,7 @@ def fillRegionFastRound (data : ByteArray) (depth slots niceSkip base r : Nat)
     No `chLen`/`chDist` size hypotheses are threaded: the single-round fill
     never reads them back (no region-token collection), so only their `set!`s
     matter. Fuel = `data.size` bounds the region count as in the exact loop. -/
-private def computeChoicesFastLoop (data : ByteArray) (depth slots niceSkip regionSize : Nat)
+def computeChoicesFastLoop (data : ByteArray) (depth slots niceSkip regionSize : Nat)
     (slit slen sdist : Array Nat) (hashTable : Array Nat) (prev : Array Nat)
     (h3tab : Array Nat) (base : Nat)
     (chLen chDist : Array Nat) (hslit : 256 ≤ slit.size) (fuel : Nat) :

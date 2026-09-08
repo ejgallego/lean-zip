@@ -137,13 +137,17 @@ def ltoLinkFlags : IO (Array String) := do
     downstream `require lean-zip` never pulls in the Rust/libdeflate/zopfli
     comparators or triggers a cargo build on (re)configure. -/
 package «lean-zip» where
+  requiresModuleSystem := true
   moreLeancArgs := run_io ltoFlags
   moreLinkArgs := run_io do return (← zlibLinkFlags) ++ (← ltoLinkFlags)
   testDriver := "test"
 
-require zipCommon from git "https://github.com/kim-em/lean-zip-common" @ "4425bab1f9522307d77e8d485bc536149ba31c36"
+require zipCommon from git "https://github.com/ejgallego/lean-zip-common" @ "3247bd6d39c31e019f80a2def42790bc21ff5599"
 
 lean_lib Zip
+
+lean_lib ZipModuleTests where
+  globs := #[.submodules `ZipModuleTests]
 
 -- zlib FFI
 input_file zlib_ffi.c where

@@ -14,6 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check module headers
+        run: python3 scripts/check-module-headers.py
+
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y zlib1g-dev pkg-config
 
@@ -27,8 +30,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .lake
-          key: lake-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'Zip/**/*.lean', 'c/**') }}
-          restore-keys: lake-
+          key: lake-modules-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json', 'Zip.lean', 'Zip/**/*.lean', 'ZipTest.lean', 'ZipTest/**/*.lean', 'ZipModuleTests/**/*.lean', 'c/**') }}
+          restore-keys: lake-modules-
 
       - name: Clean stale Lake cache on fallback restore
         if: steps.cache.outputs.cache-hit != 'true'
@@ -74,8 +77,8 @@ jobs:
           path: |
             .lake
             bench/.lake
-          key: bench-v2-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'Zip/**/*.lean', 'c/**', 'bench/lean-toolchain', 'bench/lake-manifest.json', 'bench/lakefile.lean', 'bench/**/*.lean', 'bench/c/**', 'bench/rust/**') }}
-          restore-keys: bench-v2-
+          key: bench-modules-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json', 'Zip.lean', 'Zip/**/*.lean', 'ZipTest.lean', 'ZipTest/**/*.lean', 'ZipModuleTests/**/*.lean', 'c/**', 'bench/lean-toolchain', 'bench/lake-manifest.json', 'bench/lakefile.lean', 'bench/**/*.lean', 'bench/c/**', 'bench/rust/**') }}
+          restore-keys: bench-modules-
 
       - name: Clean stale Lake cache on fallback restore
         if: steps.cache.outputs.cache-hit != 'true'

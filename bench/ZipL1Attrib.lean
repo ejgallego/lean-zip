@@ -1,4 +1,9 @@
-import Zip
+module
+
+public import Zip
+
+public section
+
 /-! # Fast-L1 emit-cost attribution (issue #2726, Step 1)
 
 A tokens-held-constant microbench on Silesia. With `ptokens := lzMatchP data 1`

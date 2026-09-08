@@ -1,4 +1,8 @@
-import Bench.ReportTiming
+module
+
+public import Bench.ReportTiming
+
+public section
 
 /-! Sentinel tests for the Track D dashboard timing contract. -/
 

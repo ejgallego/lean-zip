@@ -1,5 +1,9 @@
-import Zip
-import ZipTest.Helpers
+module
+
+public import Zip
+public import ZipTest.Helpers
+
+public section
 
 /-! Deterministic randomized fuzz driver for `Handle.read` and
 `Stream.read` driven entry points.

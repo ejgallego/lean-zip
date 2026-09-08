@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! # lazy2-sweep — matcher accept-rule + two-position-lookahead spike (#2765)
 

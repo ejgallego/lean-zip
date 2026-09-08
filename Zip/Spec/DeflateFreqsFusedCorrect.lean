@@ -1,6 +1,12 @@
-import Zip.Native.DeflateFreqsFused
-import Zip.Spec.DeflateFreqsAdditive
-import Zip.Spec.LZ77MergedCorrect
+module
+
+public import Zip.Native.DeflateFreqsFused
+public import Zip.Spec.DeflateFreqsAdditive
+public import Zip.Spec.LZ77MergedCorrect
+import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-!
 # Correctness of the fused greedy matcher

@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! Build malformed GNU long-name / long-link regression fixtures
     for Track E Priority 1.

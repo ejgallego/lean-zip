@@ -1,6 +1,10 @@
-import Zip
-import Zip.Native.InflateFast  -- #2799 spike (quarantined: not re-exported by `Zip`)
-import Bench.Libdeflate
+module
+
+public import Zip
+public import Zip.Native.InflateFast  -- #2799 spike (quarantined: not re-exported by `Zip`)
+public import Bench.Libdeflate
+
+public section
 
 /-!
 # Single-decoder inflate profiling driver

@@ -1,6 +1,10 @@
-import ZipTest.Helpers
-import ZipTest.BenchHelpers
-import Zip.Native.Inflate
+module
+
+public import ZipTest.Helpers
+public import ZipTest.BenchHelpers
+public import Zip.Native.Inflate
+
+public section
 
 /-! Decompression throughput benchmark: native Lean DEFLATE vs FFI zlib.
 

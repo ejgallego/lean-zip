@@ -1,6 +1,11 @@
-import ZipCommon.Binary
-import Zip.Native.Wide
+module
+
+public import ZipCommon.Binary
+public import Zip.Native.Wide
 import Std.Tactic.BVDecide
+public meta import Std.Tactic.BVDecide.Reflect
+
+@[expose] public section
 
 /-! # Packed token container for the LZ77 stream
 
@@ -214,7 +219,7 @@ private theorem toUSize_toNat_of_lt {n : Nat} (h : n < USize.size) : n.toUSize.t
     hot token-consumer loops (emit, freq histogram, block-split sizing).  This
     mirrors the input-reader guard used by `lz77Greedy.hash3` (#2706). -/
 @[inline] def getImpl (ta : TokenArray) (i : Nat) (h : i < ta.size) : UInt32 :=
-  have hb := ta.byte_bound h
+  have hb : 4 * i + 3 < ta.bytes.size := by exact ta.byte_bound h
   if hsz : ta.bytes.size.toUSize.toNat = ta.bytes.size then
     ta.bytes.ugetUInt32LE (4 * i).toUSize (by
       have hds : ta.bytes.size < USize.size := by
@@ -228,7 +233,7 @@ private theorem toUSize_toNat_of_lt {n : Nat} (h : n < USize.size) : n.toUSize.t
 
 /-- Read the `i`-th token as a little-endian `UInt32` (proven-in-bounds). -/
 def get (ta : TokenArray) (i : Nat) (h : i < ta.size) : UInt32 :=
-  have hb := ta.byte_bound h
+  have hb : 4 * i + 3 < ta.bytes.size := by exact ta.byte_bound h
   (ta.bytes[4 * i]'(by omega)).toUInt32
     ||| ((ta.bytes[4 * i + 1]'(by omega)).toUInt32 <<< 8)
     ||| ((ta.bytes[4 * i + 2]'(by omega)).toUInt32 <<< 16)

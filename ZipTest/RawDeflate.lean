@@ -1,4 +1,8 @@
-import ZipTest.Helpers
+module
+
+public import ZipTest.Helpers
+
+public section
 
 /-! Tests for raw DEFLATE compression/decompression with streaming roundtrip verification. -/
 

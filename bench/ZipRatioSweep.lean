@@ -1,4 +1,9 @@
-import Zip
+module
+
+public import Zip
+
+public section
+
 /-! # ratio-sweep — block-split knob sweep probe
 
 Sweeps the two `deflateRaw` block-split size knobs — `splitChunkSize`

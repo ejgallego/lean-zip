@@ -1,13 +1,17 @@
-import Zip.Native.Deflate
-import Zip.Native.DeflateFreqs
-import Zip.Native.DeflateFreqsFused
-import Zip.Spec.DeflateFreqsFusedCorrect
-import Zip.Native.DeflateParse
-import Zip.Native.DeflateL5
-import Zip.Spec.DeflateEncodeDynamic
-import Zip.Spec.DeflateStoredCorrect
-import Zip.Spec.EmitTokensCorrect
-import Zip.Spec.HuffmanEncode
+module
+
+public import Zip.Native.Deflate
+public import Zip.Native.DeflateFreqs
+public import Zip.Native.DeflateFreqsFused
+public import Zip.Spec.DeflateFreqsFusedCorrect
+public import Zip.Native.DeflateParse
+public import Zip.Native.DeflateL5
+public import Zip.Spec.DeflateEncodeDynamic
+public import Zip.Spec.DeflateStoredCorrect
+public import Zip.Spec.EmitTokensCorrect
+public import Zip.Spec.HuffmanEncode
+
+@[expose] public section
 
 /-!
   Native DEFLATE compressor — dynamic Huffman blocks (Level 5).
@@ -943,7 +947,7 @@ def deflateDynamicBlockCorePWithFlat (data : ByteArray) (tokens : TokenArray)
 /-- Frequency-taking twin kept as a second compact native caller of the shared
     flat emitter; this prevents LTO from cloning the large recursive loop into
     either block shell. -/
-private def deflateDynamicBlockCorePWithFlatF (data : ByteArray) (tokens : TokenArray)
+def deflateDynamicBlockCorePWithFlatF (data : ByteArray) (tokens : TokenArray)
     (litLens distLens : List Nat) (p : DynHeaderPlan) (hcl : p.clCodes.size ≥ 19)
     (hlit : litLens.length = 286) (hdist : distLens.length = 30)
     (hlit_bound : ∀ x ∈ litLens, x ≤ 15) (hdist_bound : ∀ x ∈ distLens, x ≤ 15)

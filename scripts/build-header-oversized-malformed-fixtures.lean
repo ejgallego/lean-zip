@@ -1,4 +1,8 @@
-import Zip
+module
+
+public import Zip
+
+public section
 
 /-! Build malformed tar fixtures whose GNU long-name and PAX extended
     header pseudo-entries declare a `size` field far above

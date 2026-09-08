@@ -1,3 +1,7 @@
+module
+
+public section
+
 /-! # zopfli FFI (Track D maximum-ratio reference comparator)
 
 Bindings to [zopfli](https://github.com/google/zopfli) — Google's exhaustive

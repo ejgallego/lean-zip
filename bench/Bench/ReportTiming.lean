@@ -1,3 +1,7 @@
+module
+
+public section
+
 /-! Shared timing policies for the Track D benchmark reports.
 
 Routine dashboard data has one protocol: median-of-5. Keep the repetition

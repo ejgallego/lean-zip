@@ -1,7 +1,11 @@
-import ZipTest.Helpers
-import Zip.Native.Gzip
-import Zip.Spec.GzipCorrect
-import Zip.Spec.ZlibCorrect
+module
+
+public import ZipTest.Helpers
+public import Zip.Native.Gzip
+public import Zip.Spec.GzipCorrect
+public import Zip.Spec.ZlibCorrect
+
+public section
 
 /-! Tests for native gzip/zlib decompression and compression against FFI,
     across compression levels and data patterns. -/

@@ -1,3 +1,7 @@
+module
+
+@[expose] public section
+
 /-! FFI bindings to zlib compression/decompression (RFC 1950). -/
 namespace Zlib
 

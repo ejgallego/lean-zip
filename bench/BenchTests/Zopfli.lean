@@ -1,5 +1,9 @@
-import ZipTest.Helpers
-import Bench.Zopfli
+module
+
+public import ZipTest.Helpers
+public import Bench.Zopfli
+
+public section
 
 /-! Smoke tests for the Track D zopfli comparator.
 

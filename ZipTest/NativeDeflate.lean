@@ -1,7 +1,11 @@
-import ZipTest.Helpers
-import Zip.Native.Deflate
-import Zip.Native.DeflateDynamic
-import Zip.Native.Inflate
+module
+
+public import ZipTest.Helpers
+public import Zip.Native.Deflate
+public import Zip.Native.DeflateDynamic
+public import Zip.Native.Inflate
+
+public section
 
 /-! Tests for native DEFLATE: stored, fixed Huffman, dynamic Huffman, and lazy matching modes
     with cross-implementation verification against FFI inflate. -/

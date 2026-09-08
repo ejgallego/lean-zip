@@ -1,5 +1,9 @@
-import Zip
-import ZipTest.Helpers
+module
+
+public import Zip
+public import ZipTest.Helpers
+
+public section
 
 /-! Deterministic randomized fuzz driver for inflate entry points.
 
@@ -375,7 +379,7 @@ private def diffSizeClasses : Array Nat :=
   #[300, 800, 2000, 4096, 9000]
 
 /-- Running tally of native-vs-FFI verdicts over mutated streams. -/
-private structure Census where
+structure Census where
   nativeAcceptFFIReject : Nat := 0
   nativeRejectFFIAccept : Nat := 0
   bothAccept : Nat := 0
