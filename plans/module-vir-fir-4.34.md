@@ -17,6 +17,8 @@ level-one, and production raw-DEFLATE entry points; `Zip.Wasm.CacheProbe`
 isolates the distance-code cache. `zip-wasm-oracle` supplies binary-safe native
 reference output. The exporter packages deterministic inputs, native oracle
 outputs, browser protocol/worker/controller, and checksums for VIR/FIR consumers.
+The tracked Canterbury inputs make the benchmark plan's required file cases
+self-contained; optional Silesia paths still require a separate corpus fetch.
 
 Validation commands from the repository root:
 

@@ -4,7 +4,8 @@ This document records the original pre-split benchmark investigation. The
 current Lean 4.34 module branch keeps the entry points and browser source
 exporter; its producer handoff is in
 [`plans/module-vir-fir-4.34.md`](../../plans/module-vir-fir-4.34.md).
-Commands below that use old corpus paths or Lean 4.33 are historical.
+The Canterbury inputs used by the plan are tracked here again. Commands below
+that require Lean 4.33 or historical producer artifacts remain archival.
 
 This directory owns the application-level benchmark contract for raw DEFLATE
 through Vir today and FIR when its concrete `ByteArray` runtime is ready. It
