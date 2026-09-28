@@ -40,10 +40,13 @@ under persistent `.local-deps/`, not `/tmp`.
 
 At the 2026-09-28 refresh, published VIR main is
 `149d2d4b615efbfaee8c1927e6adc6928410d9f4` on Lean 4.34.0; FIR main
-is `259408c5d82fcbefd64097daca821e0474160d66` on Lean 4.34.1. Their
-existing browser artifact/raw-source contracts still name the older lean-zip
-producer `273d0d6c` and zip-common `4425bab1`. The new source package does
-not replace those compiled artifacts on its own: the producer packages and
-consumer pins must be refreshed together, using each producer's exact Lean
-toolchain. In particular, FIR's 4.34.1 final-LCNF capture of the new module
-sources remains an integration check for the FIR repository.
+is `df2a75b20afe187a78a98804bbd401145e2c62a7` on Lean 4.34.1. The
+VIR package was regenerated from these sources and passed its package smoke.
+FIR main still pins the older lean-zip source, so the local FIR producer
+branch `demo/lean-zip-434-artifacts` starts at that main commit and adds the
+new source pins, ordinary compilation for the module imports, and a reviewed
+raw-closure contract. Its exported package passed native-byte and inflate
+comparison for five cases at all ten compression levels. These FIR changes
+are local and must be submitted upstream before they can become a public FIR
+artifact. Persistent producer checkouts and exported packages live under the
+ignored `.local-deps/` directory of this worktree.

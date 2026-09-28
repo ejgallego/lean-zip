@@ -2,12 +2,15 @@ export const FIR_PACKAGE_PROFILES = Object.freeze({
   raw: Object.freeze({
     id: "raw",
     backendId: "fir-native",
-    schemaVersion: "fir.lean-zip.raw.build/v2",
+    schemaVersion: "fir.lean-zip.raw.build/v3",
     sourceName: "Zip.Wasm.compressRaw",
     adapterApiVersion: "fir.lean-zip.raw.browser/v2",
     adapterFile: "lean-zip-raw-browser-adapter.mjs",
     adapterImplementationFile: "lean-zip-byte-array-browser-adapter.mjs",
-    auxiliaryFiles: Object.freeze(["standard-math-runtime-contract.mjs"]),
+    auxiliaryFiles: Object.freeze([
+      "standard-libm-runtime-contract.mjs",
+      "lean-zip-raw.wasm.functions.json",
+    ]),
     factoryExport: "createLeanZipRawAdapter",
     operation: "compressRaw",
     levelArgument: true,
@@ -104,8 +107,6 @@ export function validateFirPackageMetadata(profile, build, descriptor) {
   `FIR ${profile.id} package retains runtime operations`);
   if (profile.id === "raw") {
     const expectedFrontierImports = [
-      { module: "lean.extern", name: "Float.ofNat", kind: "function" },
-      { module: "lean.extern", name: "Float.ofScientific", kind: "function" },
       { module: "lean.extern", name: "Float.log2", kind: "function" },
     ];
     const expectedMathDeclarations = expectedFrontierImports.map(
@@ -117,22 +118,22 @@ export function validateFirPackageMetadata(profile, build, descriptor) {
     "FIR raw package has an unsupported lazy-cache rewind contract");
     requireCondition(build.capabilities?.completeRuntime?.selfContained === true &&
       build.capabilities.completeRuntime.externalRuntime?.version ===
-        "fir.standard-math/v1" &&
+        "fir.standard-libm/v2" &&
       build.capabilities.completeRuntime.externalRuntime.reservedMemoryBytes ===
         65536 &&
       JSON.stringify(build.capabilities.completeRuntime.externalRuntime.declarations) ===
         JSON.stringify(expectedMathDeclarations),
-    "FIR raw package has an unsupported standard-math runtime contract");
+    "FIR raw package has an unsupported standard-libm runtime contract");
     requireCondition(Array.isArray(build.wasm?.frontier?.imports) &&
       JSON.stringify(build.wasm.frontier.imports) ===
         JSON.stringify(expectedFrontierImports),
     "FIR raw package has an unsupported pre-link math frontier");
     requireCondition(descriptor.completeRuntime === true &&
-      descriptor.externalRuntime?.version === "fir.standard-math/v1" &&
+      descriptor.externalRuntime?.version === "fir.standard-libm/v2" &&
       descriptor.externalRuntime.reservedMemoryBytes === 65536 &&
       JSON.stringify(descriptor.externalRuntime.declarations) ===
         JSON.stringify(expectedMathDeclarations),
-    "FIR raw descriptor omits its standard-math runtime contract");
+    "FIR raw descriptor omits its standard-libm runtime contract");
   }
   return profile;
 }

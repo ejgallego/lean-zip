@@ -31,8 +31,6 @@ function validMetadata(profile) {
         ...(profile.id === "raw" ? {
           frontier: {
             imports: [
-              { module: "lean.extern", name: "Float.ofNat", kind: "function" },
-              { module: "lean.extern", name: "Float.ofScientific", kind: "function" },
               { module: "lean.extern", name: "Float.log2", kind: "function" },
             ],
           },
@@ -61,11 +59,9 @@ function validMetadata(profile) {
           completeRuntime: {
             selfContained: true,
             externalRuntime: {
-              version: "fir.standard-math/v1",
+              version: "fir.standard-libm/v2",
               reservedMemoryBytes: 65536,
-              declarations: [
-                "Float.ofNat", "Float.ofScientific", "Float.log2",
-              ],
+              declarations: ["Float.log2"],
             },
           },
         } : {}),
@@ -80,11 +76,9 @@ function validMetadata(profile) {
       ...(profile.id === "raw" ? {
         completeRuntime: true,
         externalRuntime: {
-          version: "fir.standard-math/v1",
+          version: "fir.standard-libm/v2",
           reservedMemoryBytes: 65536,
-          declarations: [
-            "Float.ofNat", "Float.ofScientific", "Float.log2",
-          ],
+          declarations: ["Float.log2"],
         },
       } : {}),
     },
@@ -103,7 +97,8 @@ test("raw FIR profile advertises the production levels 1 through 10", () => {
     "SHA256SUMS",
     "lean-zip-byte-array-browser-adapter.mjs",
     "lean-zip-raw-browser-adapter.mjs",
-    "standard-math-runtime-contract.mjs",
+    "standard-libm-runtime-contract.mjs",
+    "lean-zip-raw.wasm.functions.json",
     "lean-zip-raw.wasm",
     "lean-zip-raw.wasm.json",
     "smoke.mjs",
@@ -124,7 +119,7 @@ test("raw FIR profile advertises the production levels 1 through 10", () => {
           },
         },
       },
-    }, descriptor), /standard-math runtime contract/);
+    }, descriptor), /standard-libm runtime contract/);
   assert.throws(() => validateFirPackageMetadata(profile,
     {
       ...build,

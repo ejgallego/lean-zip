@@ -1,9 +1,9 @@
 # lean-zip browser comparison lab
 
-This 4.34 branch carries the browser shell and source exporter. Published VIR
-and FIR browser artifacts still pin the older lean-zip revision; rebuild their
-producer packages and refresh the catalog before treating browser rows as
-current. See the [integration notes](../../plans/module-vir-fir-4.34.md).
+This 4.34 branch carries the browser shell and source exporter. The local
+comparison can load freshly exported VIR and FIR-native packages built from
+the same lean-zip source revision. See the
+[integration notes](../../plans/module-vir-fir-4.34.md) for producer pins.
 
 See [`PERFORMANCE.md`](PERFORMANCE.md) for the first phase-aware VIR and FIR
 results and their artifact identities.
@@ -218,9 +218,9 @@ The FIR rows represent distinct deliverables:
    ordinary Lean `ByteArray` input and output at the browser boundary.
 
 The raw package adds `lean-zip-raw-browser-adapter.mjs`,
-`standard-math-runtime-contract.mjs`, `lean-zip-raw.wasm`, and its descriptor.
-It must record the exact pre-link frontier
-`Float.ofNat`/`Float.ofScientific`/`Float.log2`, the standard-runtime version
+`standard-libm-runtime-contract.mjs`, `lean-zip-raw.wasm`, its function
+sidecar, and its descriptor. It must record the exact pre-link frontier
+`Float.log2`, the standard-libm runtime version
 and 65,536-byte reservation, a zero-import complete module, and the
 `ByteArray × UInt8 → ByteArray` ABI. Its adapter operation is
 `compressRaw(Uint8Array, level)` with `level` in 1–10. Raw v2 does not eagerly
