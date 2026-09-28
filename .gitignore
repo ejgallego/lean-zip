@@ -3,4 +3,7 @@
 /.direnv
 /.local-deps/
 /.beam/
-/bench/
+/bench/*
+!/bench/catalog/
+!/bench/wasm/
+!/bench/web/

@@ -211,6 +211,15 @@ lake -d conformance test
 conformance/fuzz-inflate.sh # budgeted randomized fuzz run (default 30s)
 ```
 
+## VIR and FIR browser source
+
+The [`Zip.Wasm` entry points](Zip/Wasm/Entry.lean), native oracle, and
+[`bench/catalog` exporter](bench/catalog/export-browser-benchmark-source.mjs)
+provide reproducible raw-DEFLATE inputs for the VIR and FIR browser demos.
+The [integration notes](plans/module-vir-fir-4.34.md) give the source-package
+command and explain how to refresh producer artifacts together with their
+consumer pins.
+
 ## Known limitations
 
 - The native codec is whole-buffer only; there is no streaming API. For

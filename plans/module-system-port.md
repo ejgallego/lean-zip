@@ -1,5 +1,9 @@
 # Port lean-zip to Lean's module system
 
+This records the original Lean 4.33 `feat/module-system` work. The current
+Lean 4.34 integration and VIR/FIR source-package handoff are in
+[`module-vir-fir-4.34.md`](module-vir-fir-4.34.md).
+
 ## Current update: upstream split and Lean 4.33.0 (2026-09-09)
 
 The module branch now integrates upstream master at

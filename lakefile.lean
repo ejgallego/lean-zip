@@ -57,6 +57,16 @@ require zipCommon from git "https://github.com/ejgallego/lean-zip-common" @ "255
 
 lean_lib Zip
 
+/-- Binary-safe native reference for VIR and FIR browser packages. -/
+lean_exe «zip-wasm-oracle» where
+  root := `ZipWasmOracle
+
+lean_exe «zip-wasm-bench-native» where
+  root := `ZipWasmBenchNative
+
+lean_exe «zip-wasm-test» where
+  root := `ZipWasmTest
+
 lean_lib ZipModuleTests where
   globs := #[.submodules `ZipModuleTests]
 
